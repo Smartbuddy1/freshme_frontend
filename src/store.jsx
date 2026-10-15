@@ -186,7 +186,7 @@ export function Menu() {
     try {
       const payload = { items: cart.map(({ productId, size, qty }) => ({ productId, size, qty })) };
       const fingerprint = JSON.stringify(payload);
-      if (!checkout.current || checkout.current.fingerprint !== fingerprint) checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
+      if (!checkout.current || checkout.current.fingerprint !== fingerprint || paymentState === 'failed') checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
       storageSet('freshme-checkout', checkout.current, true);
       let order;
       try { order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } }); }
