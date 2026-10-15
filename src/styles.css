@@ -149,24 +149,31 @@ button svg, a svg { flex-shrink: 0; }
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  line-height: .9;
-  font-family: 'Fredoka', sans-serif;
-  font-size: 32px;
-  font-weight: 600;
-  letter-spacing: -1.2px;
+  text-decoration: none;
+  flex-shrink: 0;
 }
-.brand > span:last-child { display: block; }
-.brand-me, .brand i { color: var(--berry); }
-.brand i { font-style: normal; }
-.brand small {
+.brand-logo-img {
+  height: 48px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
   display: block;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 9.5px;
-  letter-spacing: 2px;
-  margin-top: 8px;
-  font-weight: 700;
-  color: var(--navy);
+  filter: drop-shadow(0 2px 5px rgba(11, 37, 69, 0.08));
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.brand:hover .brand-logo-img {
+  transform: scale(1.05);
+}
+.brand.compact .brand-logo-img {
+  height: 40px;
+  max-width: 110px;
+}
+.portal-logo-img {
+  height: 38px;
+  width: auto;
+  max-width: 115px;
+  object-fit: contain;
+  display: block;
 }
 .brand-icon { width: 38px; height: 48px; display: block; transform: rotate(-10deg); }
 .brand-icon svg { width: 100%; height: 100%; }
@@ -1404,8 +1411,8 @@ button svg, a svg { flex-shrink: 0; }
   animation: ticketDrop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .ticket-top { padding: 26px 22px; text-align: center; }
-.ticket-top .brand { font-size: 26px; }
-.ticket-top .brand-icon { width: 30px; height: 38px; }
+.ticket-top .brand { display: inline-flex; justify-content: center; margin-bottom: 6px; }
+.ticket-top .brand-logo-img { height: 48px; max-width: 140px; }
 .ticket-top > span:not(.ticket-date) {
   font-size: 11px;
   letter-spacing: 1.6px;
@@ -1640,7 +1647,8 @@ button svg, a svg { flex-shrink: 0; }
   flex-direction: column;
   z-index: 20;
 }
-.admin-nav > .brand { font-size: 29px; }
+.admin-nav > .brand { display: flex; align-items: center; padding: 0 4px 6px; }
+.admin-nav .brand-logo-img { height: 42px; max-width: 125px; }
 .admin-label { font-size: 10px; letter-spacing: 2px; color: #8195a3; margin: 35px 12px 12px; }
 .admin-links { display: flex; flex-direction: column; gap: 7px; }
 .admin-links > a {
@@ -1810,9 +1818,7 @@ button svg, a svg { flex-shrink: 0; }
 /* Responsiveness: All mobile screens (max-width: 768px) */
 @media (max-width: 768px) {
   .store-header { padding: 14px 18px; }
-  .brand { font-size: 28px; }
-  .brand-icon { height: 42px; width: 34px; }
-  .brand small { font-size: 8.5px; letter-spacing: 1.5px; margin-top: 6px; }
+  .brand-logo-img { height: 40px; max-width: 115px; }
   .header-note { font-size: 12.5px; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .header-note svg { width: 14px; height: 14px; }
   
@@ -2127,8 +2133,7 @@ button svg, a svg { flex-shrink: 0; }
 /* Responsiveness: Narrow mobile devices (max-width: 360px) */
 @media (max-width: 360px) {
   .store-header { padding: 12px 14px; }
-  .brand { font-size: 25px; }
-  .brand-icon { height: 38px; width: 30px; }
+  .brand-logo-img { height: 34px; max-width: 95px; }
   .header-note { font-size: 11.5px; }
 
   .store-main { padding: 4px 10px 140px; }

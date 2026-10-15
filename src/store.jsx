@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
 import { api, money, dateTime, loadCheckout, storageGet, storageSet, formatImageUrl } from './api.js';
 import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty, unlockScroll } from './components.jsx';
+import logoImg from './assets/logo.png';
 let restored = false;
 const descriptions = { 'Kala Khatta': 'Tangy. Bold. A true original.', 'Blue Raspberry': 'A little blue, a lot of wow.', 'Green Apple': 'Crisp, zingy & oh-so-cool.', Orange: 'Sunshine in every icy sip.', Cola: 'Your classic, with a cool twist.', Mango: 'The king of summer. On ice.' };
 
@@ -13,11 +14,8 @@ function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
       <div className="payment-portal-card">
         <div className="portal-header">
           <div className="portal-brand">
-            <span className="portal-logo"><Cup small /></span>
-            <div className="portal-brand-text">
-              <span className="portal-title">fresh<span>me</span><i>.</i> pay</span>
-              <span className="portal-secure"><Lock size={12}/> 256-bit SSL Secure Checkout</span>
-            </div>
+            <img src={logoImg} alt="Fresh Me" className="portal-logo-img" />
+            <span className="portal-secure"><Lock size={12}/> 256-bit SSL Secure</span>
           </div>
           <button type="button" className="portal-close" disabled={busy} onClick={onCancel} aria-label="Cancel payment">
             <X size={18}/>
