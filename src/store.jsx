@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
 import { api, money, dateTime, loadCheckout, storageGet, storageSet, formatImageUrl } from './api.js';
-import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty } from './components.jsx';
+import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty, unlockScroll } from './components.jsx';
 let restored = false;
 const descriptions = { 'Kala Khatta': 'Tangy. Bold. A true original.', 'Blue Raspberry': 'A little blue, a lot of wow.', 'Green Apple': 'Crisp, zingy & oh-so-cool.', Orange: 'Sunshine in every icy sip.', Cola: 'Your classic, with a cool twist.', Mango: 'The king of summer. On ice.' };
 
@@ -154,6 +154,7 @@ export function Menu() {
   const checkout = useRef(storageGet('freshme-checkout', null, true));
   async function refresh() { try { const data = await api('/menu'); setMenu(data); setError(''); } catch (e) { setError(e.message); } }
   useEffect(() => { refresh(); if (!restored) { restored = true; const id = storageGet('freshme-last-order'); if (id) api(`/orders/${id}`).then(o => { if (['PAID','PENDING_PAYMENT'].includes(o.status)) navigate(`/order/${id}`, { replace: true }); }).catch(() => {}); } }, []);
+  useEffect(() => { if (!open && !demoOrder) unlockScroll(); }, [open, demoOrder]);
   useEffect(() => { storageSet('freshme-cart', cart, true); }, [cart]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 1800); return () => clearTimeout(t); }, [toast]);
   const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0); const count = cart.reduce((sum, i) => sum + i.qty, 0);
@@ -207,14 +208,15 @@ export function Menu() {
       const razorpay = new window.Razorpay({ key: order.keyId, amount: order.amount, currency: 'INR', name: menu?.settings?.shopName || 'Fresh Me', description: 'Sip and chill.', order_id: order.razorpayOrderId, theme: { color: '#d91b65' },
         handler: async response => {
           settled = true;
+          unlockScroll();
           try { await api('/payments/verify', { method: 'POST', body: { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature } }); }
           catch (e) { storageSet('freshme-verification', { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature }, true); }
-          finally { storageSet('freshme-cart', [], true); busyRef.current = false; setBusy(false); navigate(`/order/${order.orderId}`); }
-        }, modal: { ondismiss: () => { if (!settled) { setOpen(true); setPaymentState('cancelled'); busyRef.current = false; setBusy(false); } } }
+          finally { storageSet('freshme-cart', [], true); busyRef.current = false; setBusy(false); unlockScroll(); navigate(`/order/${order.orderId}`); }
+        }, modal: { ondismiss: () => { unlockScroll(); if (!settled) { setOpen(true); setPaymentState('cancelled'); busyRef.current = false; setBusy(false); } } }
       });
-      razorpay.on('payment.failed', response => { settled = true; razorpay.close(); setOpen(true); setPaymentState('failed'); setError(response?.error?.description || "Payment didn't go through"); busyRef.current = false; setBusy(false); });
+      razorpay.on('payment.failed', response => { settled = true; razorpay.close(); unlockScroll(); setOpen(true); setPaymentState('failed'); setError(response?.error?.description || "Payment didn't go through"); busyRef.current = false; setBusy(false); });
       razorpay.open();
-    } catch (e) { setOpen(true); setError(e.message); setPaymentState('failed'); busyRef.current = false; setBusy(false); }
+    } catch (e) { unlockScroll(); setOpen(true); setError(e.message); setPaymentState('failed'); busyRef.current = false; setBusy(false); }
   }
   const categories = ['All flavors', ...new Set(menu?.products.map(p => p.category) || [])];
   if (menu && !menu.settings.acceptingOrders) return <><Header shopName={menu.settings.shopName}/><Empty title="Machine is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={`/order/${storageGet('freshme-last-order')}`}>View my token</Link>}</Empty></>;
@@ -274,12 +276,13 @@ export function Menu() {
 }
 export function Token() {
   const { id } = useParams(); const [order, setOrder] = useState(null); const [error, setError] = useState(''); const navigate = useNavigate();
+  useEffect(() => { unlockScroll(); window.scrollTo(0, 0); }, []);
   useEffect(() => {
     storageSet('freshme-last-order', id); let cancelled = false; let timer; let lastVerification = 0;
-    async function poll() { try { const pending = storageGet('freshme-verification',null,true); if (pending?.orderId === id && Date.now() - lastVerification > 12000) { lastVerification = Date.now(); try { await api('/payments/verify', { method: 'POST', body: pending }); storageSet('freshme-verification',null,true); } catch { /* The signed webhook may still confirm payment. */ } } const data = await api(`/orders/${id}`); if (!cancelled) { setOrder(data); setError(''); if (['PAID','SERVED'].includes(data.status)) { storageSet('freshme-cart',[],true); storageSet('freshme-checkout',null,true); } } } catch (e) { if (!cancelled) setError(e.message); } finally { if (!cancelled) timer = setTimeout(poll, 4000); } } poll(); return () => { cancelled = true; clearTimeout(timer); };
+    async function poll() { try { const pending = storageGet('freshme-verification',null,true); if (pending?.orderId === id && Date.now() - lastVerification > 12000) { lastVerification = Date.now(); try { await api('/payments/verify', { method: 'POST', body: pending }); storageSet('freshme-verification',null,true); } catch { /* The signed webhook may still confirm payment. */ } } const data = await api(`/orders/${id}`); if (!cancelled) { setOrder(data); setError(''); unlockScroll(); if (['PAID','SERVED'].includes(data.status)) { storageSet('freshme-cart',[],true); storageSet('freshme-checkout',null,true); } } } catch (e) { if (!cancelled) setError(e.message); } finally { if (!cancelled) timer = setTimeout(poll, 4000); } } poll(); return () => { cancelled = true; clearTimeout(timer); };
   }, [id]);
   const paid = ['PAID','SERVED'].includes(order?.status);
-  function browse() { storageSet('freshme-last-order',null); navigate('/'); }
+  function browse() { unlockScroll(); storageSet('freshme-last-order',null); navigate('/'); }
   return (
     <div className="token-page">
       <Header/>

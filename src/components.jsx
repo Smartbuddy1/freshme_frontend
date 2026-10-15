@@ -9,9 +9,37 @@ export function Brand({ compact = false }) { return <Link to="/" className="bran
 export function Header({ shopName = 'Fresh Me' }) { return <header className="store-header"><Brand/><span className="fresh-label"><span/> Fresh & ready</span></header>; }
 export function ErrorNotice({ message, retry }) { if (!message) return null; return <div className="notice error" role="alert"><span>{message}</span>{retry && <button className="text-button" onClick={retry}>Try again <ArrowRight size={15}/></button>}</div>; }
 export function Skeleton({ rows = 6 }) { return <div className="product-grid" aria-label="Loading drinks" aria-busy="true">{Array.from({ length: rows }, (_, i) => <div className="skeleton" key={i}/>)}</div>; }
+export function unlockScroll() {
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  document.body.style.bottom = '';
+  document.body.style.height = '';
+  document.body.style.width = '';
+  document.body.style.touchAction = '';
+  document.documentElement.style.overflow = '';
+  document.documentElement.style.position = '';
+  document.documentElement.style.height = '';
+  document.documentElement.style.touchAction = '';
+}
 export function Modal({ title, children, close, className = '' }) {
   const ref = useRef(null); const heading = useId();
-  useEffect(() => { const dialog = ref.current; dialog.showModal(); const saved = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { dialog.close(); document.body.style.overflow = saved; }; }, []);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) {
+      try { dialog.showModal(); } catch {}
+    }
+    const saved = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      try { dialog?.close(); } catch {}
+      document.body.style.overflow = (saved === 'hidden' ? '' : saved);
+      document.body.style.position = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
   return <dialog ref={ref} className={`sheet ${className}`} aria-labelledby={heading} onCancel={e => { e.preventDefault(); close(); }} onClick={e => { if (e.target === ref.current) close(); }}><div className="sheet-inner"><div className="sheet-heading"><h2 id={heading}>{title}</h2><button className="icon-button" onClick={close} aria-label="Close"><X/></button></div>{children}</div></dialog>;
 }
 export function OfflineBanner() { const [online, setOnline] = useState(navigator.onLine); useEffect(() => { const update = () => setOnline(navigator.onLine); window.addEventListener('online', update); window.addEventListener('offline', update); return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); }; }, []); return !online && <div className="offline"><WifiOff size={16}/> You’re offline. We’ll reconnect when you’re back.</div>; }

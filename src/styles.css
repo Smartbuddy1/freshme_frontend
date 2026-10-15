@@ -13,6 +13,14 @@
   --line: #dce9ed;
 }
 
+html {
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  min-height: 100%;
+}
+
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -20,6 +28,28 @@ body {
   background: #f0faff;
   color: #0b2545;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 100%;
+  width: 100%;
+}
+
+#root {
+  min-height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.store-page, .token-page {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  overflow-y: visible;
 }
 
 button, input, select, textarea { font: inherit; }
@@ -224,6 +254,7 @@ button svg, a svg { flex-shrink: 0; }
   position: relative;
   height: 340px;
   isolation: isolate;
+  pointer-events: none;
 }
 .hero-orbit {
   background: #deeff8;
