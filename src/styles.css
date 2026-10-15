@@ -48,6 +48,8 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
   flex: 1 0 auto;
   overflow-y: visible;
 }
@@ -170,13 +172,15 @@ button svg, a svg { flex-shrink: 0; }
 .brand-icon svg { width: 100%; height: 100%; }
 
 .store-header {
+  width: 100%;
   max-width: 1060px;
-  margin: auto;
+  margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 18px 24px;
   border-bottom: 1px solid #dae8ed;
+  flex-shrink: 0;
 }
 .header-note {
   font-size: 13.5px;
@@ -189,9 +193,11 @@ button svg, a svg { flex-shrink: 0; }
 .header-note svg { color: var(--berry); }
 
 .store-main {
+  width: 100%;
   max-width: 1020px;
-  margin: auto;
+  margin: 0 auto;
   padding: 16px 24px 170px;
+  flex: 1 0 auto;
 }
 
 .hero {
@@ -1351,8 +1357,10 @@ button svg, a svg { flex-shrink: 0; }
 
 .token-main {
   width: min(460px, 100%);
-  margin: auto;
-  padding: 22px 20px 60px;
+  margin: 0 auto;
+  padding: 22px 20px 80px;
+  overflow-y: visible;
+  flex: 1 0 auto;
 }
 .back-link { color: #5b7487; font-size: 13.5px; }
 .token-intro { text-align: center; margin: 18px 0 24px; }
