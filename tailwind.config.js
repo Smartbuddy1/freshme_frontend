@@ -1,0 +1,1 @@
+export default { content: ['./index.html', './src/**/*.{js,jsx}'], theme: { extend: { colors: { ice: '#F0FAFF', navy: '#0B2545', berry: '#d91b65' }, fontFamily: { display: ['Fredoka','sans-serif'], sans: ['DM Sans','sans-serif'] } } }, plugins: [] };
