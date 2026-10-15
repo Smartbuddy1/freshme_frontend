@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
 import { api, money, dateTime, loadCheckout, storageGet, storageSet, formatImageUrl } from './api.js';
 import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty, unlockScroll } from './components.jsx';
 import logoImg from './assets/logo.png';
-let restored = false;
 const descriptions = { 'Kala Khatta': 'Tangy. Bold. A true original.', 'Blue Raspberry': 'A little blue, a lot of wow.', 'Green Apple': 'Crisp, zingy & oh-so-cool.', Orange: 'Sunshine in every icy sip.', Cola: 'Your classic, with a cool twist.', Mango: 'The king of summer. On ice.' };
 
 function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
@@ -149,9 +148,25 @@ export function Menu() {
   const [cart, setCart] = useState(() => storageGet('freshme-cart', [], true)); const [open, setOpen] = useState(false); const [drop, setDrop] = useState(''); const [toast, setToast] = useState('');
   const [paymentState, setPaymentState] = useState(''); const [busy, setBusy] = useState(false); const busyRef = useRef(false);
   const [demoOrder, setDemoOrder] = useState(null);
+  const [activeOrder, setActiveOrder] = useState(null);
   const checkout = useRef(storageGet('freshme-checkout', null, true));
   async function refresh() { try { const data = await api('/menu'); setMenu(data); setError(''); } catch (e) { setError(e.message); } }
-  useEffect(() => { refresh(); if (!restored) { restored = true; const id = storageGet('freshme-last-order'); if (id) api(`/orders/${id}`).then(o => { if (['PAID','PENDING_PAYMENT'].includes(o.status)) navigate(`/order/${id}`, { replace: true }); }).catch(() => {}); } }, []);
+  useEffect(() => {
+    refresh();
+    const id = storageGet('freshme-last-order');
+    if (id) {
+      api(`/orders/${id}`).then(o => {
+        const age = Date.now() - new Date(o.createdAt).getTime();
+        if (age < 30 * 60 * 1000 && ['PAID', 'PENDING_PAYMENT'].includes(o.status)) {
+          if (age < 3 * 60 * 1000) {
+            navigate(`/order/${id}`, { replace: true });
+          } else {
+            setActiveOrder(o);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, []);
   useEffect(() => { if (!open && !demoOrder) unlockScroll(); }, [open, demoOrder]);
   useEffect(() => { storageSet('freshme-cart', cart, true); }, [cart]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 1800); return () => clearTimeout(t); }, [toast]);
@@ -207,10 +222,39 @@ export function Menu() {
         handler: async response => {
           settled = true;
           unlockScroll();
-          try { await api('/payments/verify', { method: 'POST', body: { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature } }); }
-          catch (e) { storageSet('freshme-verification', { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature }, true); }
-          finally { storageSet('freshme-cart', [], true); busyRef.current = false; setBusy(false); unlockScroll(); navigate(`/order/${order.orderId}`); }
-        }, modal: { ondismiss: () => { unlockScroll(); if (!settled) { setOpen(true); setPaymentState('cancelled'); busyRef.current = false; setBusy(false); } } }
+          const verification = { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature };
+          storageSet('freshme-verification', verification, true);
+          storageSet('freshme-cart', [], true);
+          storageSet('freshme-last-order', order.orderId);
+          busyRef.current = false;
+          setBusy(false);
+          navigate(`/order/${order.orderId}`, { state: { verification } });
+        },
+        modal: {
+          ondismiss: async () => {
+            unlockScroll();
+            if (!settled) {
+              setBusy(true);
+              busyRef.current = true;
+              try {
+                const check = await api(`/orders/${order.orderId}`);
+                if (['PAID', 'SERVED'].includes(check.status)) {
+                  settled = true;
+                  storageSet('freshme-cart', [], true);
+                  storageSet('freshme-last-order', order.orderId);
+                  busyRef.current = false;
+                  setBusy(false);
+                  navigate(`/order/${order.orderId}`);
+                  return;
+                }
+              } catch {}
+              setOpen(true);
+              setPaymentState('cancelled');
+              busyRef.current = false;
+              setBusy(false);
+            }
+          }
+        }
       });
       razorpay.on('payment.failed', response => { settled = true; razorpay.close(); unlockScroll(); setOpen(true); setPaymentState('failed'); setError(response?.error?.description || "Payment didn't go through"); busyRef.current = false; setBusy(false); });
       razorpay.open();
@@ -218,7 +262,13 @@ export function Menu() {
   }
   const categories = ['All flavors', ...new Set(menu?.products.map(p => p.category) || [])];
   if (menu && !menu.settings.acceptingOrders) return <><Header shopName={menu.settings.shopName}/><Empty title="Machine is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={`/order/${storageGet('freshme-last-order')}`}>View my token</Link>}</Empty></>;
-  return <div className="store-page"><Header shopName={menu?.settings.shopName}/><main className="store-main">
+  return <div className="store-page"><Header shopName={menu?.settings.shopName}/>{activeOrder && (
+    <div className="active-order-banner" onClick={() => navigate(`/order/${activeOrder.orderId}`)}>
+      <span className="active-order-badge">Active Order</span>
+      <span>{activeOrder.status === 'PAID' ? `Token #${String(activeOrder.tokenNo).padStart(3, '0')} · Tap to view receipt` : 'Payment in progress · Tap to view token'}</span>
+      <ArrowRight size={16} />
+    </div>
+  )}<main className="store-main">
     <section className="hero">
       <div className="hero-copy">
         <div className="eyebrow"><span/> SIP AND CHILL</div>
@@ -274,13 +324,50 @@ export function Menu() {
 }
 export function Token() {
   const { id } = useParams(); const [order, setOrder] = useState(null); const [error, setError] = useState(''); const navigate = useNavigate();
+  const location = useLocation();
   useEffect(() => { unlockScroll(); window.scrollTo(0, 0); }, []);
   useEffect(() => {
-    storageSet('freshme-last-order', id); let cancelled = false; let timer; let lastVerification = 0;
-    async function poll() { try { const pending = storageGet('freshme-verification',null,true); if (pending?.orderId === id && Date.now() - lastVerification > 12000) { lastVerification = Date.now(); try { await api('/payments/verify', { method: 'POST', body: pending }); storageSet('freshme-verification',null,true); } catch { /* The signed webhook may still confirm payment. */ } } const data = await api(`/orders/${id}`); if (!cancelled) { setOrder(data); setError(''); unlockScroll(); if (['PAID','SERVED'].includes(data.status)) { storageSet('freshme-cart',[],true); storageSet('freshme-checkout',null,true); } } } catch (e) { if (!cancelled) setError(e.message); } finally { if (!cancelled) timer = setTimeout(poll, 4000); } } poll(); return () => { cancelled = true; clearTimeout(timer); };
+    storageSet('freshme-last-order', id); let cancelled = false; let timer; let attempts = 0;
+    async function poll() {
+      try {
+        const pending = location.state?.verification || storageGet('freshme-verification', null, true);
+        if (pending?.orderId === id) {
+          try {
+            const verifyRes = await api('/payments/verify', { method: 'POST', body: pending });
+            storageSet('freshme-verification', null, true);
+            if (verifyRes && ['PAID', 'SERVED'].includes(verifyRes.status)) {
+              storageSet('freshme-cart', [], true);
+              storageSet('freshme-checkout', null, true);
+            }
+          } catch { /* Auto-reconciliation on GET /api/orders/:id will handle fallback */ }
+        }
+        const data = await api(`/orders/${id}`);
+        if (!cancelled) {
+          setOrder(data);
+          setError('');
+          unlockScroll();
+          if (['PAID', 'SERVED'].includes(data.status)) {
+            storageSet('freshme-cart', [], true);
+            storageSet('freshme-checkout', null, true);
+            storageSet('freshme-verification', null, true);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        attempts++;
+        if (!cancelled) {
+          const isDone = order && ['PAID', 'SERVED'].includes(order.status);
+          const nextInterval = isDone ? 6000 : (attempts < 15 ? 1200 : 3000);
+          timer = setTimeout(poll, nextInterval);
+        }
+      }
+    }
+    poll();
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [id]);
   const paid = ['PAID','SERVED'].includes(order?.status);
-  function browse() { unlockScroll(); storageSet('freshme-last-order',null); navigate('/'); }
+  function browse() { unlockScroll(); navigate('/'); }
   return (
     <div className="token-page">
       <Header/>
@@ -327,8 +414,16 @@ export function Token() {
                 </div>
               </div>
 
-
-              {!paid && <button className="primary full" onClick={browse}>Return to checkout <ArrowRight size={18}/></button>}
+              {!paid ? (
+                order?.status === 'EXPIRED' ? (
+                  <button className="primary full" onClick={browse}>Start a new order <ArrowRight size={18}/></button>
+                ) : (
+                  <div className="verifying-status">
+                    <div className="verifying-pulse" />
+                    <span>Confirming payment with the counter…</span>
+                  </div>
+                )
+              ) : null}
               <p className="token-tip">
                 <Snowflake size={16}/>
                 {order.status === 'SERVED' ? 'Thanks for chilling with us. See you for the next one!' : 'Keep this page handy. It updates all by itself.'}
