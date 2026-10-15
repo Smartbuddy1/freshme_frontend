@@ -1,4 +1,10 @@
-const API_BASE = (import.meta.env?.VITE_API_URL || '/api').replace(/\/+$/, '');
+const API_BASE = (import.meta.env?.VITE_API_URL || '/freshme/api').replace(/\/+$/, '');
+
+export const formatImageUrl = url => {
+  if (!url) return '';
+  if (url.startsWith('/api/')) return `/freshme${url}`;
+  return url;
+};
 
 export async function api(path, options = {}) {
   let response;
