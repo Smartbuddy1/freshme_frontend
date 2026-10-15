@@ -202,17 +202,19 @@ export function Menu() {
         return;
       }
       await loadCheckout();
+      setOpen(false);
       let settled = false;
-      const razorpay = new window.Razorpay({ key: order.keyId, amount: order.amount, currency: 'INR', name: menu.settings.shopName, description: 'Sip and chill.', order_id: order.razorpayOrderId, theme: { color: '#d91b65' },
+      const razorpay = new window.Razorpay({ key: order.keyId, amount: order.amount, currency: 'INR', name: menu?.settings?.shopName || 'Fresh Me', description: 'Sip and chill.', order_id: order.razorpayOrderId, theme: { color: '#d91b65' },
         handler: async response => {
           settled = true;
           try { await api('/payments/verify', { method: 'POST', body: { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature } }); }
           catch (e) { storageSet('freshme-verification', { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature }, true); }
           finally { storageSet('freshme-cart', [], true); busyRef.current = false; setBusy(false); navigate(`/order/${order.orderId}`); }
-        }, modal: { ondismiss: () => { if (!settled) { setPaymentState('cancelled'); busyRef.current = false; setBusy(false); } } }
+        }, modal: { ondismiss: () => { if (!settled) { setOpen(true); setPaymentState('cancelled'); busyRef.current = false; setBusy(false); } } }
       });
-      razorpay.on('payment.failed', () => { settled = true; razorpay.close(); setPaymentState('failed'); busyRef.current = false; setBusy(false); }); razorpay.open();
-    } catch (e) { setError(e.message); setPaymentState('failed'); busyRef.current = false; setBusy(false); }
+      razorpay.on('payment.failed', response => { settled = true; razorpay.close(); setOpen(true); setPaymentState('failed'); setError(response?.error?.description || "Payment didn't go through"); busyRef.current = false; setBusy(false); });
+      razorpay.open();
+    } catch (e) { setOpen(true); setError(e.message); setPaymentState('failed'); busyRef.current = false; setBusy(false); }
   }
   const categories = ['All flavors', ...new Set(menu?.products.map(p => p.category) || [])];
   if (menu && !menu.settings.acceptingOrders) return <><Header shopName={menu.settings.shopName}/><Empty title="Machine is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={`/order/${storageGet('freshme-last-order')}`}>View my token</Link>}</Empty></>;
