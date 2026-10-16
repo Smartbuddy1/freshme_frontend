@@ -1,4 +1,11 @@
-export const API_BASE = (import.meta.env?.VITE_API_URL || '/api').replace(/\/+$/, '');
+function resolveApiBase() {
+  const configured = (import.meta.env?.VITE_API_URL || '/api').replace(/\/+$/, '');
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && configured.startsWith('http://')) {
+    return '/api';
+  }
+  return configured;
+}
+export const API_BASE = resolveApiBase();
 export let activeMachine = 'DEFAULT';
 export function setActiveMachine(code) { activeMachine=code; }
 export async function downloadPayments(query) {
