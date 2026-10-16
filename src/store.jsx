@@ -164,11 +164,7 @@ export function Menu() {
       api(`/orders/${id}`).then(o => {
         const age = Date.now() - new Date(o.createdAt).getTime();
         if (age < 30 * 60 * 1000 && ['PAID', 'PENDING_PAYMENT'].includes(o.status)) {
-          if (age < 3 * 60 * 1000 && !location.state?.browse) {
-            navigate(orderPath(machineCode,id), { replace: true });
-          } else {
-            setActiveOrder(o);
-          }
+          setActiveOrder(o);
         }
       }).catch(() => {});
     }
@@ -433,16 +429,29 @@ export function Token() {
                 </div>
               </div>
 
-              {!paid ? (
-                order?.status === 'EXPIRED' ? (
-                  <button className="primary full" onClick={browse}>Start a new order <ArrowRight size={18}/></button>
-                ) : (
-                  <div className="verifying-status">
-                    <div className="verifying-pulse" />
-                    <span>Confirming payment with the counter…</span>
-                  </div>
-                )
-              ) : null}
+              {paid ? (
+                <button
+                  type="button"
+                  className="primary full"
+                  onClick={browse}
+                  style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <ArrowLeft size={18}/> Back to menu & start new order
+                </button>
+              ) : order?.status === 'EXPIRED' ? (
+                <button
+                  type="button"
+                  className="primary full"
+                  onClick={browse}
+                >
+                  Start a new order <ArrowRight size={18}/>
+                </button>
+              ) : (
+                <div className="verifying-status">
+                  <div className="verifying-pulse" />
+                  <span>Confirming payment with the counter…</span>
+                </div>
+              )}
               <p className="token-tip">
                 <Snowflake size={16}/>
                 {order.status === 'SERVED' ? 'Thanks for chilling with us. See you for the next one!' : 'Keep this page handy. It updates all by itself.'}
