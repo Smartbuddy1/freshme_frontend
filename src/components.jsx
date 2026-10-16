@@ -77,7 +77,7 @@ export function Modal({ title, children, close, className = '' }) {
   );
 }
 export function OfflineBanner() { const [online, setOnline] = useState(navigator.onLine); useEffect(() => { const update = () => setOnline(navigator.onLine); window.addEventListener('online', update); window.addEventListener('offline', update); return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); }; }, []); return !online && <div className="offline"><WifiOff size={16}/> You’re offline. We’ll reconnect when you’re back.</div>; }
-export function Badge({ status = 'NONE' }) { return <span className={`badge badge-${status.toLowerCase().replaceAll(' ','-').replaceAll('_','-')}`}><span className="badge-dot" /><span>{status.replaceAll('_',' ')}</span></span>; }
+export function Badge({ status = 'NONE' }) { return <span className={`badge badge-${status.toLowerCase().replaceAll(' ','-')}`}>{status.replaceAll('_',' ')}</span>; }
 export function Empty({ title, children, embedded=false }) { const Container=embedded?'section':'main';const Heading=embedded?'h2':'h1';return <Container className="empty"><Snowflake size={36}/><Heading>{title}</Heading><div>{children}</div></Container>; }
 export function Progress({ active, children }) { return <div className={`progress-step ${active ? 'active' : ''}`}><span>{active ? <Check size={15}/> : <i/>}</span><strong>{children}</strong></div>; }
 
