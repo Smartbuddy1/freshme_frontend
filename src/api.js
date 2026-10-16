@@ -1,9 +1,17 @@
 function resolveApiBase() {
-  const configured = (import.meta.env?.VITE_API_URL || '/api').replace(/\/+$/, '');
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && configured.startsWith('http://')) {
-    return '/api';
+  if (import.meta.env?.VITE_API_URL) {
+    const configured = import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+    if (!(typeof window !== 'undefined' && window.location.protocol === 'https:' && configured.startsWith('http://'))) {
+      return configured;
+    }
   }
-  return configured;
+  if (typeof window !== 'undefined') {
+    const p = window.location.pathname;
+    if (p === '/freshme' || p.startsWith('/freshme/')) {
+      return '/freshme/api';
+    }
+  }
+  return '/api';
 }
 export const API_BASE = resolveApiBase();
 export let activeMachine = 'DEFAULT';
