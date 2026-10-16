@@ -26,7 +26,10 @@ export function unlockScroll() {
   document.documentElement.style.touchAction = '';
 }
 export function Modal({ title, children, close, className = '' }) {
-  const ref = useRef(null); const heading = useId();
+  const ref = useRef(null);
+  const heading = useId();
+  const mouseDownTarget = useRef(null);
+
   useEffect(() => {
     const dialog = ref.current;
     if (dialog && !dialog.open) {
@@ -41,7 +44,37 @@ export function Modal({ title, children, close, className = '' }) {
       document.documentElement.style.overflow = '';
     };
   }, []);
-  return <dialog ref={ref} className={`sheet ${className}`} aria-labelledby={heading} onCancel={e => { e.preventDefault(); close(); }} onClick={e => { if (e.target === ref.current) close(); }}><div className="sheet-inner"><div className="sheet-heading"><h2 id={heading}>{title}</h2><button className="icon-button" onClick={close} aria-label="Close"><X/></button></div>{children}</div></dialog>;
+
+  const isCart = className.includes('cart-sheet');
+
+  return (
+    <dialog
+      ref={ref}
+      className={`sheet ${className}`}
+      aria-labelledby={heading}
+      onCancel={e => { e.preventDefault(); close(); }}
+      onMouseDown={e => { mouseDownTarget.current = e.target; }}
+      onClick={e => {
+        if (e.target === ref.current && mouseDownTarget.current === ref.current) {
+          close();
+        }
+      }}
+    >
+      <div
+        className="sheet-inner"
+        onMouseDown={e => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="sheet-heading">
+          <h2 id={heading}>{title}</h2>
+          <button type="button" className="icon-button" onClick={close} aria-label="Close">
+            <X size={20}/>
+          </button>
+        </div>
+        {isCart ? children : <div className="sheet-body">{children}</div>}
+      </div>
+    </dialog>
+  );
 }
 export function OfflineBanner() { const [online, setOnline] = useState(navigator.onLine); useEffect(() => { const update = () => setOnline(navigator.onLine); window.addEventListener('online', update); window.addEventListener('offline', update); return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); }; }, []); return !online && <div className="offline"><WifiOff size={16}/> You’re offline. We’ll reconnect when you’re back.</div>; }
 export function Badge({ status = 'NONE' }) { return <span className={`badge badge-${status.toLowerCase().replaceAll(' ','-')}`}>{status.replaceAll('_',' ')}</span>; }

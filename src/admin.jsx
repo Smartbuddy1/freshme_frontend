@@ -57,11 +57,240 @@ function Products({ notify }) {
   return <><PageTop title="The flavor cabinet" subtitle="Keep your menu fresh and your favorites ready."><button className="primary" onClick={() => setEdit({ ...blankProduct(), sortOrder: Math.max(-1, ...(data || []).map(p => p.sortOrder)) + 1 })}><Plus size={17}/> Add flavor</button></PageTop><ErrorNotice message={error || actionError} retry={reload}/><div className="panel"><div className="panel-heading"><h2>All flavors</h2><span className="form-note">{data?.length || 0} drinks on the menu</span></div>{!data ? <div className="skeleton admin-skeleton"/> : !data.length ? <div className="admin-empty">Add your first flavor to get the slush flowing.</div> : <div className="table-scroll"><table className="data-table product-table"><thead><tr><th>Flavor</th><th>Sizes & prices</th><th>Availability</th><th>Slot order</th><th>Actions</th></tr></thead><tbody>{data.map(p => <tr key={p._id}><td className="product-name-cell"><div className="product-admin-name">{p.imageUrl ? <img src={formatImageUrl(p.imageUrl)} alt="" loading="lazy"/> : <Cup color={p.flavorColor}/>}<span><b>{p.name}</b><small>{p.category}</small></span></div></td><td data-label="Sizes">{p.sizes.map(s => <div key={s.label} className="leading-6">{s.label} <b>{money(s.price)}</b></div>)}</td><td data-label="Availability"><Toggle checked={p.available} label={p.available ? 'Available' : 'Sold out'} onChange={v => toggle(p,v)} disabled={busy}/></td><td data-label="Slot order">{p.sortOrder}</td><td><div className="row-actions"><button onClick={() => setEdit(p)}><Pencil size={14}/>Edit</button><button aria-label={`Delete ${p.name}`} onClick={() => setDeleting(p)}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div>}</div>{edit && <ProductEditor product={edit} close={() => setEdit(null)} saved={() => { setEdit(null); reload(); notify('Flavor saved. Looking fresh!'); }}/ >}{deleting && <Modal title="Remove this flavor?" close={() => !busy && setDeleting(null)} className="delete-dialog"><p>{deleting.name} will disappear from the customer menu. Past order receipts will keep their original details.</p><div className="dialog-actions"><button className="secondary" disabled={busy} onClick={() => setDeleting(null)}>Keep it</button><button className="primary" disabled={busy} onClick={remove}>Remove flavor</button></div></Modal>}</>;
 }
 function ProductEditor({ product, close, saved }) {
-  const [form,setForm] = useState(() => { const { name,category,flavorColor,imageUrl='',sizes,sortOrder,available } = product; return { name,category,flavorColor,imageUrl,sizes:sizes.map(({label,price})=>({label,price})),sortOrder,available }; }); const [error,setError] = useState(''); const [busy,setBusy] = useState(false); const [uploading,setUploading] = useState(false);
-  const field = (key,value) => setForm(f => ({...f,[key]:value}));
-  async function save(e) { e.preventDefault(); if (busy || uploading) return; setBusy(true); setError(''); try { await api(`/admin/products${product._id ? `/${product._id}` : ''}`, { method: product._id ? 'PUT':'POST', body:form }); saved(); } catch(e) { setError(e.message); } finally { setBusy(false); } }
-  async function upload(e) { const file = e.target.files?.[0]; if (!file) return; if (file.size > 5*1024*1024) { setError('Choose an image smaller than 5 MB'); return; } setUploading(true); setError(''); try { const body = new FormData(); body.append('image',file); const result = await api('/admin/products/image',{method:'POST',body}); field('imageUrl',result.imageUrl); } catch(e) { setError(e.message); } finally { setUploading(false); } }
-  return <Modal title={product._id ? 'Freshen up this flavor' : 'Meet your next favorite'} close={() => !busy && !uploading && close()}><form className="product-editor" onSubmit={save}><ErrorNotice message={error}/><label>Flavor name<input required maxLength={80} value={form.name} onChange={e=>field('name',e.target.value)}/></label><div className="form-row"><label>Category<input required maxLength={40} value={form.category} onChange={e=>field('category',e.target.value)}/></label><label>Slot order<input type="number" required min={0} max={10000} value={form.sortOrder} onChange={e=>field('sortOrder',Number(e.target.value))}/></label></div><label>Flavor color<div className="color-field"><input type="color" value={form.flavorColor} onChange={e=>field('flavorColor',e.target.value)}/><span>{form.flavorColor}</span></div></label><div><label>Sizes & prices (Rs.)</label>{form.sizes.map((s,index)=><div className="size-edit" key={index}><label><span>Size</span><input required maxLength={30} aria-label={`Size ${index+1}`} value={s.label} onChange={e=>field('sizes',form.sizes.map((x,i)=>i===index?{...x,label:e.target.value}:x))}/></label><label><span>Price</span><input required type="number" min={1} max={10000} step={1} aria-label={`Price ${index+1}`} value={s.price} onChange={e=>field('sizes',form.sizes.map((x,i)=>i===index?{...x,price:Number(e.target.value)}:x))}/></label><button type="button" className="icon-button" aria-label={`Remove size ${index+1}`} disabled={form.sizes.length===1} onClick={()=>field('sizes',form.sizes.filter((_,i)=>i!==index))}><X size={17}/></button></div>)}{form.sizes.length<3 && <button type="button" className="text-button" onClick={()=>field('sizes',[...form.sizes,{label:'',price:40}])}><Plus size={15}/>Add size</button>}</div><label>Product image <span>optional · JPG, PNG or WebP</span><input className="upload-input" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading || busy} onChange={upload}/></label>{uploading && <p className="form-note">Uploading your image…</p>}{form.imageUrl && <div className="flex items-center gap-3"><img className="product-preview" src={formatImageUrl(form.imageUrl)} alt="Product preview"/><button className="text-button" type="button" onClick={()=>field('imageUrl','')}>Use illustrated cup</button></div>}<Toggle checked={form.available} onChange={v=>field('available',v)} label="Available to order"/><button className="primary full" disabled={busy || uploading}>{busy ? 'Saving…' : 'Save flavor'}<Check size={18}/></button></form></Modal>;
+  const [form, setForm] = useState(() => {
+    const { name, category, flavorColor, imageUrl = '', sizes, sortOrder, available } = product;
+    return {
+      name,
+      category,
+      flavorColor,
+      imageUrl,
+      sizes: sizes ? sizes.map(({ label, price }) => ({ label, price })) : [{ label: 'Small', price: 40 }],
+      sortOrder,
+      available
+    };
+  });
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const field = (key, value) => setForm(f => ({ ...f, [key]: value }));
+
+  async function save(e) {
+    e.preventDefault();
+    if (busy || uploading) return;
+    setBusy(true);
+    setError('');
+    try {
+      const sanitizedSizes = form.sizes
+        .map(s => ({
+          label: String(s.label || '').trim(),
+          price: Math.max(1, Math.min(10000, Number(s.price) || 0))
+        }))
+        .filter(s => s.label);
+      if (!sanitizedSizes.length) {
+        throw new Error('Add at least one size with a name and price');
+      }
+      const payload = {
+        ...form,
+        name: form.name.trim(),
+        category: form.category.trim(),
+        sizes: sanitizedSizes
+      };
+      await api(`/admin/products${product._id ? `/${product._id}` : ''}`, {
+        method: product._id ? 'PUT' : 'POST',
+        body: payload
+      });
+      saved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function upload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Choose an image smaller than 5 MB');
+      return;
+    }
+    setUploading(true);
+    setError('');
+    try {
+      const body = new FormData();
+      body.append('image', file);
+      const result = await api('/admin/products/image', { method: 'POST', body });
+      field('imageUrl', result.imageUrl);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={product._id ? 'Freshen up this flavor' : 'Meet your next favorite'}
+      close={() => !busy && !uploading && close()}
+    >
+      <form
+        className="product-editor"
+        onSubmit={save}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+            e.preventDefault();
+          }
+        }}
+      >
+        <ErrorNotice message={error}/>
+        <label>
+          Flavor name
+          <input
+            required
+            maxLength={80}
+            value={form.name}
+            onChange={e => field('name', e.target.value)}
+          />
+        </label>
+        <div className="form-row">
+          <label>
+            Category
+            <input
+              required
+              maxLength={40}
+              value={form.category}
+              onChange={e => field('category', e.target.value)}
+            />
+          </label>
+          <label>
+            Slot order
+            <input
+              type="number"
+              required
+              min={0}
+              max={10000}
+              value={form.sortOrder}
+              onChange={e => field('sortOrder', e.target.value === '' ? 0 : Number(e.target.value))}
+            />
+          </label>
+        </div>
+        <label>
+          Flavor color
+          <div className="color-field">
+            <input
+              type="color"
+              value={form.flavorColor}
+              onChange={e => field('flavorColor', e.target.value)}
+            />
+            <span>{form.flavorColor}</span>
+          </div>
+        </label>
+        <div className="sizes-section">
+          <label>Sizes & prices (Rs.)</label>
+          {form.sizes.map((s, index) => (
+            <div className="size-edit" key={index}>
+              <label>
+                <span>Size</span>
+                <input
+                  required
+                  maxLength={30}
+                  aria-label={`Size ${index + 1}`}
+                  value={s.label}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setForm(f => ({
+                      ...f,
+                      sizes: f.sizes.map((x, i) => i === index ? { ...x, label: val } : x)
+                    }));
+                  }}
+                />
+              </label>
+              <label>
+                <span>Price</span>
+                <input
+                  required
+                  type="number"
+                  min={1}
+                  max={10000}
+                  step={1}
+                  aria-label={`Price ${index + 1}`}
+                  value={s.price === '' ? '' : s.price}
+                  onChange={e => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setForm(f => ({
+                      ...f,
+                      sizes: f.sizes.map((x, i) => i === index ? { ...x, price: val } : x)
+                    }));
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="icon-button size-remove-button"
+                title={`Remove size ${index + 1}`}
+                aria-label={`Remove size ${index + 1}`}
+                disabled={form.sizes.length === 1}
+                onClick={() => setForm(f => ({
+                  ...f,
+                  sizes: f.sizes.filter((_, i) => i !== index)
+                }))}
+              >
+                <X size={17}/>
+              </button>
+            </div>
+          ))}
+          {form.sizes.length < 3 && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setForm(f => ({
+                ...f,
+                sizes: [...f.sizes, { label: '', price: 40 }]
+              }))}
+            >
+              <Plus size={15}/> Add size
+            </button>
+          )}
+        </div>
+        <label>
+          Product image <span>optional · JPG, PNG or WebP</span>
+          <input
+            className="upload-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={uploading || busy}
+            onChange={upload}
+          />
+        </label>
+        {uploading && <p className="form-note">Uploading your image…</p>}
+        {form.imageUrl && (
+          <div className="flex items-center gap-3">
+            <img
+              className="product-preview"
+              src={formatImageUrl(form.imageUrl)}
+              alt="Product preview"
+            />
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => field('imageUrl', '')}
+            >
+              Use illustrated cup
+            </button>
+          </div>
+        )}
+        <Toggle
+          checked={form.available}
+          onChange={v => field('available', v)}
+          label="Available to order"
+        />
+        <button className="primary full" disabled={busy || uploading}>
+          {busy ? 'Saving…' : 'Save flavor'}
+          <Check size={18}/>
+        </button>
+      </form>
+    </Modal>
+  );
 }
 function Payments() {
   const [exportError,setExportError]=useState('');
