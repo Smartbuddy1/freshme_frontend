@@ -56,7 +56,7 @@ export default function Admin() {
           <Route path="products" element={<Products {...common}/>}/>
           <Route path="orders" element={<Orders {...common}/>}/>
           <Route path="payments" element={<Payments/>}/>
-          <Route path="settings" element={<ShopSettings {...common} logout={logout} onPasswordChange={() => setUser(null)}/>}/>
+          <Route path="settings" element={<ShopSettings {...common} onPasswordChange={() => setUser(null)}/>}/>
           <Route path="reports" element={<Reports/>}/>
           <Route path="account" element={<Navigate to="/admin/settings" replace/>}/>
           <Route path="*" element={<Dashboard {...common}/>}/>
@@ -332,7 +332,7 @@ function Payments() {
   const [from,setFrom] = useState(today()); const [to,setTo] = useState(today()); const [page,setPage] = useState(1); const query = new URLSearchParams({from,to,page}); const {data,error,reload} = useData(`/admin/payments?${query}`);
   return <><ErrorNotice message={exportError}/><PageTop title="Payments" subtitle="Every happy sip, accounted for."><button onClick={async()=>{try{setExportError('');await downloadPayments(new URLSearchParams({from,to}));}catch(e){setExportError(e.message);}}} className="secondary"><Download size={16}/>Export CSV</button></PageTop><div className="filters"><label>From (IST)<input required type="date" value={from} onChange={e=>{setFrom(e.target.value);setPage(1);}}/></label><label>To (IST)<input required type="date" value={to} min={from} onChange={e=>{setTo(e.target.value);setPage(1);}}/></label><button className="secondary" onClick={reload}><RefreshCw size={16}/>Refresh</button></div><ErrorNotice message={error} retry={reload}/><div className="payment-summary"><div><small>Total collected · gross</small><b>{money(data?.totals.total)}</b></div><span>{data?.totals.count || 0} payments<br/>{data?.totals.refundedOrders || 0} orders with refunds</span></div><p className="form-note">Refund flags include partial refunds. Gross collections do not subtract refunds.</p><div className="panel">{!data ? <div className="skeleton admin-skeleton"/> : !data.orders.length ? <div className="admin-empty">No payments in this date range.</div> : <div className="table-scroll"><table className="data-table payments-table"><thead><tr><th>Date</th><th>Token</th><th>Amount</th><th>Status</th><th>Refunded</th><th>Razorpay order</th><th>Payment ID</th><th>Method</th></tr></thead><tbody>{data.orders.map(o=><tr key={o._id}><td data-label="Date (IST)">{dateTime(o.paidAt)}</td><td><span className="table-token">#{String(o.tokenNo).padStart(3,'0')}</span></td><td data-label="Amount"><strong>{money(o.total)}</strong></td><td data-label="Status"><Badge status={o.status}/></td><td data-label="Refunded">{o.refunded?'Yes':'No'}</td><td data-label="Razorpay order"><span className="payment-id">{o.razorpayOrderId}</span></td><td data-label="Payment ID"><span className="payment-id">{o.razorpayPaymentId}</span></td><td data-label="Method">{o.paymentMethod}</td></tr>)}</tbody></table></div>}<Pagination data={data} page={page} setPage={setPage}/></div></>;
 }
-function ShopSettings({ notify, logout, onPasswordChange }) {
+function ShopSettings({ notify, onPasswordChange }) {
   const { data, error, reload } = useData('/admin/settings');
   const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -428,9 +428,6 @@ function ShopSettings({ notify, logout, onPasswordChange }) {
           </section>
         </div>
       )}
-      <button className="secondary" onClick={logout} style={{ marginTop: '20px' }}>
-        <LogOut size={16}/>Sign out of the counter
-      </button>
     </>
   );
 }
