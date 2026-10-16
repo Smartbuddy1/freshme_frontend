@@ -168,10 +168,14 @@ export function Menu() {
           setActiveOrder(o);
         } else {
           storageSet('freshme-last-order', null);
+          setActiveOrder(null);
         }
       }).catch(() => {
         storageSet('freshme-last-order', null);
+        setActiveOrder(null);
       });
+    } else {
+      setActiveOrder(null);
     }
   }, []);
   useEffect(() => {
@@ -239,13 +243,21 @@ export function Menu() {
       try {
         order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } });
       } catch (e) {
-        if (e.status !== 410) throw e;
+        if (e.status !== 410 && e.status !== 409) throw e;
         checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
         storageSet('freshme-checkout', checkout.current, true);
         order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } });
       }
       storageSet('freshme-last-order', order.orderId);
-      if (['PAID','SERVED'].includes(order.status)) { navigate(orderPath(order.orderId)); return; }
+      if (['PAID','SERVED'].includes(order.status)) {
+        storageSet('freshme-cart', [], true);
+        checkout.current = null;
+        storageSet('freshme-checkout', null, true);
+        busyRef.current = false;
+        setBusy(false);
+        navigate(orderPath(order.orderId));
+        return;
+      }
       if (order.isDemo) {
         setOpen(false);
         setDemoOrder(order);
@@ -263,6 +275,8 @@ export function Menu() {
           const verification = { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature };
           storageSet('freshme-verification', verification, true);
           storageSet('freshme-cart', [], true);
+          checkout.current = null;
+          storageSet('freshme-checkout', null, true);
           storageSet('freshme-last-order', order.orderId);
           busyRef.current = false;
           setBusy(false);
@@ -283,6 +297,8 @@ export function Menu() {
                 if (['PAID', 'SERVED'].includes(check.status)) {
                   settled = true;
                   storageSet('freshme-cart', [], true);
+                  checkout.current = null;
+                  storageSet('freshme-checkout', null, true);
                   storageSet('freshme-last-order', order.orderId);
                   busyRef.current = false;
                   setBusy(false);
@@ -306,11 +322,16 @@ export function Menu() {
   if(!menu && error)return <><Header/><Empty title="Menu unavailable"><ErrorNotice message={error} retry={refresh}/></Empty></>;
   if (menu && !menu.settings.acceptingOrders) return <><Header shopName={menu.settings.shopName}/><Empty title="Shop is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={orderPath(storageGet('freshme-last-order'))}>View my token</Link>}</Empty></>;
   return <div className="store-page"><Header shopName={menu?.settings.shopName}/>{activeOrder && (
-    <button type="button" className="active-order-banner" onClick={() => navigate(orderPath(activeOrder.orderId))}>
-      <span className="active-order-badge">Active Order</span>
-      <span>{activeOrder.status === 'PAID' ? `Token #${String(activeOrder.tokenNo).padStart(3, '0')} · Tap to view receipt` : 'Payment in progress · Tap to view token'}</span>
-      <ArrowRight size={16} />
-    </button>
+    <div className="active-order-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <button type="button" style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1, textAlign: 'left', padding: 0 }} onClick={() => navigate(orderPath(activeOrder.orderId))}>
+        <span className="active-order-badge">Active Order</span>
+        <span>{activeOrder.status === 'PAID' ? `Token #${String(activeOrder.tokenNo).padStart(3, '0')} · Tap to view receipt` : 'Payment in progress · Tap to view token'}</span>
+        <ArrowRight size={16} />
+      </button>
+      <button type="button" aria-label="Dismiss banner" onClick={e => { e.stopPropagation(); setActiveOrder(null); storageSet('freshme-last-order', null); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+        <X size={16} />
+      </button>
+    </div>
   )}<main className="store-main">
     <section className="hero">
       <div className="hero-copy">
@@ -338,11 +359,18 @@ export function Menu() {
       busyRef.current = true;
       try {
         await api('/payments/demo-confirm', { method: 'POST', body: { orderId: demoOrder.orderId } });
+        unlockScroll();
         storageSet('freshme-cart', [], true);
+        checkout.current = null;
+        storageSet('freshme-checkout', null, true);
+        storageSet('freshme-last-order', demoOrder.orderId);
         setDemoOrder(null);
         setOpen(false);
+        busyRef.current = false;
+        setBusy(false);
         navigate(orderPath(demoOrder.orderId));
       } catch (err) {
+        unlockScroll();
         setError(err.message);
         setDemoOrder(null);
         setPaymentState('failed');
@@ -353,11 +381,13 @@ export function Menu() {
       }
     }}
     onFail={() => {
+      unlockScroll();
       setDemoOrder(null);
       setPaymentState('failed');
       setOpen(true);
     }}
     onCancel={() => {
+      unlockScroll();
       setDemoOrder(null);
       setPaymentState('cancelled');
       setOpen(true);
@@ -410,8 +440,11 @@ export function Token() {
         attempts++;
         if (!cancelled && currentStatus !== undefined) {
           const isDone = ['PAID', 'SERVED'].includes(currentStatus);
-          const nextInterval = isDone ? 6000 : (attempts < 15 ? 1200 : 3000);
-          timer = setTimeout(poll, nextInterval);
+          const isExpired = currentStatus === 'EXPIRED';
+          if (!isExpired) {
+            const nextInterval = isDone ? 6000 : (attempts < 15 ? 1200 : 3000);
+            timer = setTimeout(poll, nextInterval);
+          }
         }
       }
     }
@@ -419,7 +452,13 @@ export function Token() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [id]);
   const paid = ['PAID','SERVED'].includes(order?.status);
-  function browse() { unlockScroll(); navigate(menuPath(), {state:{browse:true}}); }
+  function browse() {
+    unlockScroll();
+    if (order?.status === 'EXPIRED') {
+      storageSet('freshme-last-order', null);
+    }
+    navigate(menuPath(), { state: { browse: true } });
+  }
   return (
     <div className="token-page">
       <Header shopName={order?.shopName}/>
