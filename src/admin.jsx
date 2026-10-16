@@ -3,7 +3,7 @@ import { Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, CircleDollarSign, ExternalLink, Download, LayoutDashboard, LogOut, Package, Pencil, Plus, Printer, ReceiptText, RefreshCw, Settings as SettingsIcon, ShoppingBag, Trash2, Volume2, X } from 'lucide-react';
 import { api, money, today, dateTime, storageGet, storageSet, formatImageUrl, downloadPayments } from './api.js';
 import { Badge, Brand, Cup, ErrorNotice, Modal } from './components.jsx';
-import { Reports,Account,AgentSettings } from './admin-extras.jsx';
+import { Reports,Account } from './admin-extras.jsx';
 function useData(path, interval = 0) {
   const [data, setData] = useState(null); const [error, setError] = useState(''); const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce(n => n + 1), []);
@@ -336,10 +336,105 @@ function Payments() {
   return <><ErrorNotice message={exportError}/><PageTop title="Payments" subtitle="Every happy sip, accounted for."><button onClick={async()=>{try{setExportError('');await downloadPayments(new URLSearchParams({from,to}));}catch(e){setExportError(e.message);}}} className="secondary"><Download size={16}/>Export CSV</button></PageTop><div className="filters"><label>From (IST)<input required type="date" value={from} onChange={e=>{setFrom(e.target.value);setPage(1);}}/></label><label>To (IST)<input required type="date" value={to} min={from} onChange={e=>{setTo(e.target.value);setPage(1);}}/></label><button className="secondary" onClick={reload}><RefreshCw size={16}/>Refresh</button></div><ErrorNotice message={error} retry={reload}/><div className="payment-summary"><div><small>Total collected · gross</small><b>{money(data?.totals.total)}</b></div><span>{data?.totals.count || 0} payments<br/>{data?.totals.refundedOrders || 0} orders with refunds</span></div><p className="form-note">Refund flags include partial refunds. Gross collections do not subtract refunds.</p><div className="panel">{!data ? <div className="skeleton admin-skeleton"/> : !data.orders.length ? <div className="admin-empty">No payments in this date range.</div> : <div className="table-scroll"><table className="data-table payments-table"><thead><tr><th>Date</th><th>Token</th><th>Amount</th><th>Status</th><th>Refunded</th><th>Razorpay order</th><th>Payment ID</th><th>Method</th></tr></thead><tbody>{data.orders.map(o=><tr key={o._id}><td data-label="Date (IST)">{dateTime(o.paidAt)}</td><td><span className="table-token">#{String(o.tokenNo).padStart(3,'0')}</span></td><td data-label="Amount"><strong>{money(o.total)}</strong></td><td data-label="Status"><Badge status={o.status}/></td><td data-label="Refunded">{o.refunded?'Yes':'No'}</td><td data-label="Razorpay order"><span className="payment-id">{o.razorpayOrderId}</span></td><td data-label="Payment ID"><span className="payment-id">{o.razorpayPaymentId}</span></td><td data-label="Method">{o.paymentMethod}</td></tr>)}</tbody></table></div>}<Pagination data={data} page={page} setPage={setPage}/></div></>;
 }
 function ShopSettings({ notify, logout, onPasswordChange }) {
-  const {data,error,reload}=useData('/admin/settings'); const [form,setForm]=useState(null); const [busy,setBusy]=useState(false); const [actionError,setActionError]=useState(''); const [currentPassword,setCurrentPassword]=useState(''); const [newPassword,setNewPassword]=useState('');
-  useEffect(()=>{if(data) setForm({shopName:data.shopName,tagline:data.tagline,acceptingOrders:data.acceptingOrders,receiptHeader:data.receiptHeader,receiptFooter:data.receiptFooter,prepCopy:data.prepCopy,batchSize:data.batchSize});},[data]);
-  async function save(e) { e.preventDefault(); setBusy(true);setActionError('');try{await api('/admin/settings',{method:'PUT',body:form});notify('Shop settings saved');}catch(e){setActionError(e.message);}finally{setBusy(false);}}
-  async function password(e) { e.preventDefault();setBusy(true);setActionError('');try{await api('/admin/change-password',{method:'POST',body:{currentPassword,newPassword}});notify('Password updated. Please sign in again.');onPasswordChange();}catch(e){setActionError(e.message);}finally{setBusy(false);}}
-  return <><PageTop title="A few finishing touches" subtitle="Your shop, your way."/><ErrorNotice message={error || actionError} retry={reload}/>{!form ? <div className="skeleton admin-skeleton"/> : <div className="settings-grid"><section className="panel"><div className="panel-heading"><h2>Shop details</h2></div><form className="settings-form" onSubmit={save}><label>Shop name<input required maxLength={60} value={form.shopName} onChange={e=>setForm({...form,shopName:e.target.value})}/></label><label>Tagline<input maxLength={120} value={form.tagline} onChange={e=>setForm({...form,tagline:e.target.value})}/></label><label>Receipt header<input maxLength={120} value={form.receiptHeader} onChange={e=>setForm({...form,receiptHeader:e.target.value})}/></label><label>Receipt footer<input maxLength={120} value={form.receiptFooter} onChange={e=>setForm({...form,receiptFooter:e.target.value})}/></label><Toggle checked={form.prepCopy} onChange={prepCopy=>setForm({...form,prepCopy})} label="Print a preparation copy"/><label>Agent batch size<input type="number" min={1} max={20} required value={form.batchSize} onChange={e=>setForm({...form,batchSize:Number(e.target.value)})}/></label><div><Toggle checked={form.acceptingOrders} onChange={v=>setForm({...form,acceptingOrders:v})} label="Accepting orders"/><p className="form-note mt-2">Turn off for a break. Customers will see “Shop is resting, back soon”. Save to apply.</p></div><button className="primary" disabled={busy}>Save settings<Check size={17}/></button></form></section><section className="panel"><div className="panel-heading"><h2>Keep your account safe</h2></div><form className="settings-form" onSubmit={password}><p className="panel-subtitle">Use at least 12 characters. Changing your password signs out all staff sessions.</p><label>Current password<input type="password" required autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></label><label>New password<input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></label><button className="secondary" disabled={busy}>Update password</button></form></section></div>}<AgentSettings notify={notify}/><button className="secondary" onClick={logout}><LogOut size={16}/>Sign out of the counter</button></>;
+  const { data, error, reload } = useData('/admin/settings');
+  const [form, setForm] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    if (data) setForm({
+      shopName: data.shopName,
+      tagline: data.tagline,
+      acceptingOrders: data.acceptingOrders,
+      receiptHeader: data.receiptHeader || '',
+      receiptFooter: data.receiptFooter || 'Thank you!',
+      prepCopy: Boolean(data.prepCopy),
+      batchSize: data.batchSize || 5
+    });
+  }, [data]);
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setActionError('');
+    try {
+      await api('/admin/settings', { method: 'PUT', body: form });
+      notify('Shop settings saved successfully');
+    } catch(e) {
+      setActionError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function password(e) {
+    e.preventDefault();
+    setBusy(true);
+    setActionError('');
+    try {
+      await api('/admin/change-password', { method: 'POST', body: { currentPassword, newPassword } });
+      notify('Password updated. Please sign in again.');
+      onPasswordChange();
+    } catch(e) {
+      setActionError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <PageTop title="Shop Settings" subtitle="Control your shop details, receipts, and order availability."/>
+      <ErrorNotice message={error || actionError} retry={reload}/>
+      {!form ? <div className="skeleton admin-skeleton"/> : (
+        <div className="settings-grid">
+          <section className="panel">
+            <div className="panel-heading"><h2>Shop & Receipt Details</h2></div>
+            <form className="settings-form" onSubmit={save}>
+              <div style={{ marginBottom: '16px', padding: '14px', background: form.acceptingOrders ? '#f0fdf4' : '#fffbeb', borderRadius: '12px', border: form.acceptingOrders ? '1px solid #bbf7d0' : '1px solid #fde68a' }}>
+                <Toggle checked={form.acceptingOrders} onChange={v => setForm({ ...form, acceptingOrders: v })} label={form.acceptingOrders ? "Shop is Open (Accepting Orders)" : "Shop is on a Break (Paused)"}/>
+                <p className="form-note mt-2" style={{ margin: '6px 0 0 0', fontSize: '13px', color: form.acceptingOrders ? '#166534' : '#92400e' }}>
+                  {form.acceptingOrders ? "Customers can view menu and place orders." : "Ordering is paused. Customers will see 'Shop is resting, back soon'."}
+                </p>
+              </div>
+
+              <label>Shop name
+                <input required maxLength={60} value={form.shopName} onChange={e => setForm({ ...form, shopName: e.target.value })}/>
+              </label>
+              <label>Tagline
+                <input maxLength={120} value={form.tagline} onChange={e => setForm({ ...form, tagline: e.target.value })}/>
+              </label>
+              <label>Receipt header note (printed at top of bill)
+                <input maxLength={120} value={form.receiptHeader} onChange={e => setForm({ ...form, receiptHeader: e.target.value })} placeholder="e.g. Welcome to Fresh Me!"/>
+              </label>
+              <label>Receipt footer note (printed at bottom of bill)
+                <input maxLength={120} value={form.receiptFooter} onChange={e => setForm({ ...form, receiptFooter: e.target.value })} placeholder="Thank you! Visit again!"/>
+              </label>
+              <button className="primary" disabled={busy}>Save settings<Check size={17}/></button>
+            </form>
+          </section>
+
+          <section className="panel">
+            <div className="panel-heading"><h2>Security & Password</h2></div>
+            <form className="settings-form" onSubmit={password}>
+              <p className="panel-subtitle">Use at least 12 characters. Changing your password signs out all staff sessions.</p>
+              <label>Current password
+                <input type="password" required autoComplete="current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/>
+              </label>
+              <label>New password
+                <input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)}/>
+              </label>
+              <button className="secondary" disabled={busy}>Update password</button>
+            </form>
+          </section>
+        </div>
+      )}
+      <button className="secondary" onClick={logout} style={{ marginTop: '20px' }}>
+        <LogOut size={16}/>Sign out of the counter
+      </button>
+    </>
+  );
 }
 
