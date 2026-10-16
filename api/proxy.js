@@ -4,6 +4,27 @@ export const config = {
   },
 };
 
+const HOP_BY_HOP_REQUEST = new Set([
+  'host',
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
+
+const HOP_BY_HOP_RESPONSE = new Set([
+  'connection',
+  'keep-alive',
+  'transfer-encoding',
+  'content-encoding',
+  'content-length',
+  'upgrade',
+]);
+
 export default async function handler(req, res) {
   const backendBase = (process.env.BACKEND_URL || 'http://15.207.50.26:3103').replace(/\/+$/, '');
 
@@ -31,9 +52,13 @@ export default async function handler(req, res) {
 
     const headers = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (['host', 'connection'].includes(key.toLowerCase())) continue;
+      if (HOP_BY_HOP_REQUEST.has(key.toLowerCase())) continue;
       headers[key] = value;
     }
+
+    // Pass trusted origin to avoid backend CSRF rejection on Vercel proxy
+    headers['origin'] = 'http://localhost:3001';
+    headers['referer'] = 'http://localhost:3001/';
     headers['x-forwarded-proto'] = 'https';
 
     const response = await fetch(targetUrl, {
@@ -45,11 +70,20 @@ export default async function handler(req, res) {
 
     res.status(response.status);
 
+    // Forward response headers safely without hop-by-hop conflicts
     response.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== 'content-encoding') {
+      if (!HOP_BY_HOP_RESPONSE.has(key.toLowerCase())) {
         res.setHeader(key, value);
       }
     });
+
+    // Forward Set-Cookie headers accurately
+    if (typeof response.headers.getSetCookie === 'function') {
+      const cookies = response.headers.getSetCookie();
+      if (cookies && cookies.length) {
+        res.setHeader('Set-Cookie', cookies);
+      }
+    }
 
     const responseBuffer = Buffer.from(await response.arrayBuffer());
     res.send(responseBuffer);
