@@ -169,6 +169,27 @@ export function Menu() {
       }).catch(() => {});
     }
   }, []);
+  useEffect(() => {
+    if (!menu?.products?.length) return;
+    setCart(currentCart => {
+      if (!currentCart?.length) return currentCart;
+      let changed = false;
+      const reconciled = currentCart.map(item => {
+        const p = menu.products.find(prod => prod._id === item.productId);
+        if (!p || !p.available || !p.sizes?.length) {
+          changed = true;
+          return null;
+        }
+        const sizeObj = p.sizes.find(s => s.label === item.size) || p.sizes[0];
+        if (sizeObj.label !== item.size || sizeObj.price !== item.price) {
+          changed = true;
+          return { ...item, size: sizeObj.label, price: sizeObj.price, name: p.name, color: p.flavorColor };
+        }
+        return item;
+      }).filter(Boolean);
+      return changed ? reconciled : currentCart;
+    });
+  }, [menu]);
   useEffect(() => { if (!open && !demoOrder && !busy) unlockScroll(); }, [open, demoOrder, busy]);
   useEffect(() => { storageSet('freshme-cart', cart, true); }, [cart]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 1800); return () => clearTimeout(t); }, [toast]);
@@ -198,15 +219,22 @@ export function Menu() {
   }
   async function pay(e) {
     e?.preventDefault(); if (busyRef.current || !cart.length) return;
+    if(!validPhone(phone)){setError('Enter a valid 10-digit mobile number');return;}
     busyRef.current = true; setBusy(true); setPaymentState(''); setError('');
     try {
-      const payload = checkoutPayload(cart,'','',machineCode);
+      const payload = checkoutPayload(cart,phone,customerName,machineCode);
       const fingerprint = JSON.stringify(payload);
       if (!checkout.current || checkout.current.fingerprint !== fingerprint) checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
       storageSet('freshme-checkout', checkout.current, true);
       let order;
-      try { order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } }); }
-      catch (e) { if (e.status !== 410) throw e; checkout.current.idempotencyKey = crypto.randomUUID(); storageSet('freshme-checkout', checkout.current, true); order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } }); }
+      try {
+        order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } });
+      } catch (e) {
+        if (e.status !== 410 && e.status !== 409) throw e;
+        checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
+        storageSet('freshme-checkout', checkout.current, true);
+        order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } });
+      }
       storageSet('freshme-last-order', order.orderId);
       if (['PAID','SERVED'].includes(order.status)) { navigate(orderPath(machineCode,order.orderId)); return; }
       if (order.isDemo) {
@@ -292,7 +320,7 @@ export function Menu() {
     <div className="goodness-note"><Snowflake/><span>Good vibes. Great slush. <b>That's Fresh Me.</b></span><Snowflake/></div>
   </main>{toast && <div className="toast" role="status"><Check size={17}/>{toast}</div>}
   {!open && !busy && count > 0 && <section className="cart-dock" aria-label="Shopping tray"><div className="cart-display"><div className="cart-count"><ShoppingBag size={21}/><span>{count}</span></div><div className="cart-total"><span>{`${count} ${count === 1 ? 'drink' : 'drinks'} in your tray`}</span><b className="digital">{money(total)}</b></div><button className="primary cart-pay" onClick={() => setOpen(true)}>Pay <ArrowRight size={18}/></button></div><span className="dock-caption"><ShieldCheck size={12}/> Safe payments. Happy sipping.</span></section>}
-  {open && <Modal title="Your happy little tray" close={() => !busy && setOpen(false)} className="cart-sheet"><form onSubmit={pay} className="cart-form"><div className="cart-items">{cart.map((i, index) => <div className="cart-item" key={`${i.productId}-${i.size}`}><Cup color={i.color} className="cart-cup"/><div className="cart-item-main"><div className="cart-item-top"><h3>{i.name}</h3><button type="button" className="icon-button" aria-label={`Remove ${i.name}`} disabled={busy} onClick={() => changeCart(cart.filter((_, j) => j !== index))}><Trash2 size={17}/></button></div><div className="size-chips">{menu.products.find(p => p._id === i.productId)?.sizes.map(s => <button type="button" key={s.label} disabled={busy} className={s.label === i.size ? 'active' : ''} onClick={() => changeSize(index, s.label)}>{s.label}</button>)}</div><div className="qty-row"><div className="stepper"><button type="button" disabled={busy || i.qty <= 1} aria-label={`Decrease ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty - 1 } : x))}><Minus size={15}/></button><b>{i.qty}</b><button type="button" disabled={busy || i.qty >= 20} aria-label={`Increase ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty + 1 } : x))}><Plus size={15}/></button></div><strong>{money(i.qty * i.price)}</strong></div></div></div>)}{!cart.length && <p className="empty-cart">Your tray is waiting for a little happiness.</p>}{paymentState && <div className="notice" role="status"><strong>{paymentState === 'cancelled' ? 'Checkout cancelled' : "Payment didn't go through"}</strong><p>{paymentState === 'cancelled' ? 'Your tray is saved. Ready when you are.' : 'You can retry safely with the same checkout. If money was deducted, check your token before paying again.'}</p>{storageGet('freshme-last-order') && <Link to={orderPath(machineCode,storageGet('freshme-last-order'))}>Check payment status</Link>}</div>}<ErrorNotice message={error}/></div><div className="checkout-footer"><div className="checkout-total"><span>Total happiness</span><strong>{money(total)}</strong></div><button type="submit" className="primary full" disabled={busy || !cart.length}><CreditCard size={18}/>{busy ? 'Opening secure checkout…' : `${paymentState ? 'Retry · ' : 'Pay '}${money(total)}`}<ArrowRight size={18}/></button><p className="secure-note"><ShieldCheck size={14}/> {menu?.settings?.isDemo ? 'Local Test Mode · Simulated Checkout' : 'Secure checkout by Razorpay'}</p></div></form></Modal>}
+  {open && <Modal title="Your happy little tray" close={() => !busy && setOpen(false)} className="cart-sheet"><form onSubmit={pay} className="cart-form"><div className="cart-items"><div className="checkout-contact"><label>Mobile number<input name="phone" type="tel" inputMode="numeric" autoComplete="tel-national" required pattern="[6-9][0-9]{9}" minLength={10} maxLength={10} value={phone} onChange={e=>{setPhone(e.target.value);invalidate();}} aria-describedby="phone-help"/></label><small id="phone-help">10-digit Indian mobile number</small><label>Name (optional)<input name="customerName" autoComplete="name" maxLength={80} value={customerName} onChange={e=>{setCustomerName(e.target.value);invalidate();}}/></label></div>{cart.map((i, index) => <div className="cart-item" key={`${i.productId}-${i.size}`}><Cup color={i.color} className="cart-cup"/><div className="cart-item-main"><div className="cart-item-top"><h3>{i.name}</h3><button type="button" className="icon-button" aria-label={`Remove ${i.name}`} disabled={busy} onClick={() => changeCart(cart.filter((_, j) => j !== index))}><Trash2 size={17}/></button></div><div className="size-chips">{menu.products.find(p => p._id === i.productId)?.sizes.map(s => <button type="button" key={s.label} disabled={busy} className={s.label === i.size ? 'active' : ''} onClick={() => changeSize(index, s.label)}>{s.label}</button>)}</div><div className="qty-row"><div className="stepper"><button type="button" disabled={busy || i.qty <= 1} aria-label={`Decrease ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty - 1 } : x))}><Minus size={15}/></button><b>{i.qty}</b><button type="button" disabled={busy || i.qty >= 20} aria-label={`Increase ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty + 1 } : x))}><Plus size={15}/></button></div><strong>{money(i.qty * i.price)}</strong></div></div></div>)}{!cart.length && <p className="empty-cart">Your tray is waiting for a little happiness.</p>}{paymentState && <div className="notice" role="status"><strong>{paymentState === 'cancelled' ? 'Checkout cancelled' : "Payment didn't go through"}</strong><p>{paymentState === 'cancelled' ? 'Your tray is saved. Ready when you are.' : 'You can retry safely with the same checkout. If money was deducted, check your token before paying again.'}</p>{storageGet('freshme-last-order') && <Link to={orderPath(machineCode,storageGet('freshme-last-order'))}>Check payment status</Link>}</div>}<ErrorNotice message={error}/></div><div className="checkout-footer"><div className="checkout-total"><span>Total happiness</span><strong>{money(total)}</strong></div><button type="submit" className="primary full" disabled={busy || !cart.length}><CreditCard size={18}/>{busy ? 'Opening secure checkout…' : `${paymentState ? 'Retry · ' : 'Pay '}${money(total)}`}<ArrowRight size={18}/></button><p className="secure-note"><ShieldCheck size={14}/> {menu?.settings?.isDemo ? 'Local Test Mode · Simulated Checkout' : 'Secure checkout by Razorpay'}</p></div></form></Modal>}
   {demoOrder && <PaymentPortal
     order={demoOrder}
     busy={busy}
