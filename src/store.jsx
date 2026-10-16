@@ -427,7 +427,7 @@ export function Token() {
                 <p>{paid ? 'Your order is confirmed. Show the token below at the counter.' : 'If your payment completed, your token will appear here automatically.'}</p>
               </div>
 
-              <ol className="order-progress" aria-label="Order progress"><li className={paid?'complete':''}>1. Payment {paid?'confirmed':'pending'}</li><li className={order.printed?'complete':''}>2. Receipt {order.printed?'printed':'queued'}</li><li className={order.status==='SERVED'?'complete':''}>3. {order.status==='SERVED'?'Served':'Collect at counter'}</li></ol><p className="machine-name">{order.machine?.name || 'Fresh Me'}</p><div className="ticket">
+              <div className="ticket">
                 <div className="ticket-top">
                   <Brand compact to={menuPath(machineCode)}/>
                   <span><Ticket size={16}/> YOUR HAPPY TICKET</span>

@@ -3,7 +3,7 @@ import { Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, CircleDollarSign, ExternalLink, Download, LayoutDashboard, LogOut, Package, Pencil, Plus, Printer, ReceiptText, RefreshCw, Settings as SettingsIcon, ShoppingBag, Trash2, Volume2, X } from 'lucide-react';
 import { api, money, today, dateTime, storageGet, storageSet, formatImageUrl, setActiveMachine, downloadPayments } from './api.js';
 import { Badge, Brand, Cup, ErrorNotice, Modal } from './components.jsx';
-import { Machines,Users,Reports,Account } from './management.jsx';
+import { Reports,Account } from './management.jsx';
 function useData(path, interval = 0) {
   const [data, setData] = useState(null); const [error, setError] = useState(''); const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce(n => n + 1), []);
@@ -20,16 +20,56 @@ function Login({ onLogin }) {
 }
 export default function Admin() {
   const [user, setUser] = useState(undefined); const [message, setMessage] = useState(''); const [error, setError] = useState(''); const navigate = useNavigate();
-  const [machines,setMachines]=useState([]),[selected,setSelected]=useState(''),[machineRevision,setMachineRevision]=useState(0);
-  useEffect(()=>{if(!user)return;let cancelled=false;api('/admin/machines').then(list=>{if(cancelled)return;setMachines(list);const saved=storageGet('freshme-admin-machine');const code=list.find(m=>m.code===selected)?.code || list.find(m=>m.code===saved)?.code || list[0]?.code || '';setActiveMachine(code);setSelected(code);}).catch(e=>{if(!cancelled)setError(e.message);});return()=>{cancelled=true;};},[user,machineRevision]);
+  useEffect(() => { setActiveMachine('DEFAULT'); }, []);
   useEffect(() => { api('/admin/me').then(setUser).catch(() => setUser(null)); const expire = () => setUser(null); window.addEventListener('admin-expired', expire); return () => window.removeEventListener('admin-expired', expire); }, []);
   useEffect(() => { if (message) { const timer = setTimeout(() => setMessage(''), 3500); return () => clearTimeout(timer); } }, [message]);
   async function logout() { try { await api('/admin/logout', { method: 'POST' }); setUser(null); navigate('/admin'); } catch (e) { setError(e.message); } }
   if (user === undefined) return <div className="page-loading">Opening the counter…</div>; if (!user) return <Login onLogin={setUser}/>;
-  const common = { notify: setMessage, role:user.role };
-  const owner=user.role==='OWNER';
-  const links=[['','Dashboard',LayoutDashboard],['orders','Orders',ReceiptText],...(owner?[['products','Products',Package],['payments','Payments',CircleDollarSign],['reports','Reports',LayoutDashboard],['machines','Machines',Printer],['users','Users',SettingsIcon],['settings','Settings',SettingsIcon]]:[]),['account','Account',SettingsIcon]];
-  return <div className="admin-shell"><aside className="admin-nav"><Brand compact/><span className="admin-label">BEHIND THE COUNTER</span><nav className="admin-links">{links.map(([path,label,Icon]) => <NavLink key={path} to={`/admin${path ? `/${path}` : ''}`} end={!path}><Icon size={19}/><span>{label}</span></NavLink>)}</nav><Link to="/" className="nav-store"><ExternalLink size={15}/> Open customer menu</Link><button className="secondary logout" onClick={logout}><LogOut size={16}/> Sign out</button></aside><main className="admin-main"><label className="machine-selector">Selected machine<select value={selected} onChange={e=>{setActiveMachine(e.target.value);setSelected(e.target.value);storageSet('freshme-admin-machine',e.target.value);}}>{machines.map(m=><option key={m.id} value={m.code}>{m.name} ({m.code})</option>)}</select></label><ErrorNotice message={error}/>{selected && <Routes key={selected}><Route index element={<Dashboard {...common}/>}/><Route path="products" element={owner?<Products {...common}/>:<h1>Owner access required</h1>}/><Route path="orders" element={<Orders {...common}/>}/><Route path="payments" element={owner?<Payments/>:<h1>Owner access required</h1>}/><Route path="settings" element={owner?<ShopSettings {...common} logout={logout} onPasswordChange={() => setUser(null)}/>:<h1>Owner access required</h1>}/><Route path="machines" element={owner?<Machines {...common} onChange={()=>setMachineRevision(v=>v+1)}/>:<h1>Owner access required</h1>}/><Route path="users" element={owner?<Users {...common}/>:<h1>Owner access required</h1>}/><Route path="reports" element={owner?<Reports/>:<h1>Owner access required</h1>}/><Route path="account" element={<Account onChanged={()=>setUser(null)}/>}/><Route path="*" element={<Dashboard {...common}/>}/></Routes>}</main>{message && <div className="status-message" role="status">{message}</div>}</div>;
+  const common = { notify: setMessage, role: user.role };
+  const owner = user.role === 'OWNER';
+  const links = [
+    ['', 'Dashboard', LayoutDashboard],
+    ['orders', 'Orders', ReceiptText],
+    ...(owner ? [
+      ['products', 'Products', Package],
+      ['payments', 'Payments', CircleDollarSign],
+      ['reports', 'Reports', LayoutDashboard],
+      ['settings', 'Settings', SettingsIcon]
+    ] : []),
+    ['account', 'Account', SettingsIcon]
+  ];
+  return (
+    <div className="admin-shell">
+      <aside className="admin-nav">
+        <Brand compact/>
+        <span className="admin-label">BEHIND THE COUNTER</span>
+        <nav className="admin-links">
+          {links.map(([path, label, Icon]) => (
+            <NavLink key={path} to={`/admin${path ? `/${path}` : ''}`} end={!path}>
+              <Icon size={19}/>
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <Link to="/" className="nav-store"><ExternalLink size={15}/> Open customer menu</Link>
+        <button className="secondary logout" onClick={logout}><LogOut size={16}/> Sign out</button>
+      </aside>
+      <main className="admin-main">
+        <ErrorNotice message={error}/>
+        <Routes>
+          <Route index element={<Dashboard {...common}/>}/>
+          <Route path="products" element={owner ? <Products {...common}/> : <h1>Owner access required</h1>}/>
+          <Route path="orders" element={<Orders {...common}/>}/>
+          <Route path="payments" element={owner ? <Payments/> : <h1>Owner access required</h1>}/>
+          <Route path="settings" element={owner ? <ShopSettings {...common} logout={logout} onPasswordChange={() => setUser(null)}/> : <h1>Owner access required</h1>}/>
+          <Route path="reports" element={owner ? <Reports/> : <h1>Owner access required</h1>}/>
+          <Route path="account" element={<Account onChanged={() => setUser(null)}/>}/>
+          <Route path="*" element={<Dashboard {...common}/>}/>
+        </Routes>
+      </main>
+      {message && <div className="status-message" role="status">{message}</div>}
+    </div>
+  );
 }
 function OrderTable({ orders, reload, notify, highlighted = new Set() }) {
   const [busy, setBusy] = useState(''); const [error, setError] = useState('');
