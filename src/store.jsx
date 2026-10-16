@@ -165,8 +165,12 @@ export function Menu() {
         const age = Date.now() - new Date(o.createdAt).getTime();
         if (age < 30 * 60 * 1000 && ['PAID', 'PENDING_PAYMENT'].includes(o.status)) {
           setActiveOrder(o);
+        } else {
+          storageSet('freshme-last-order', null);
         }
-      }).catch(() => {});
+      }).catch(() => {
+        storageSet('freshme-last-order', null);
+      });
     }
   }, []);
   useEffect(() => {
@@ -396,9 +400,13 @@ export function Token() {
         }
       } catch (e) {
         if (!cancelled) setError(e.message);
+        if (e.status === 404) {
+          storageSet('freshme-last-order', null);
+          return;
+        }
       } finally {
         attempts++;
-        if (!cancelled) {
+        if (!cancelled && currentStatus !== undefined) {
           const isDone = ['PAID', 'SERVED'].includes(currentStatus);
           const nextInterval = isDone ? 6000 : (attempts < 15 ? 1200 : 3000);
           timer = setTimeout(poll, nextInterval);
