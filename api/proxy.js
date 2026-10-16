@@ -26,7 +26,10 @@ const HOP_BY_HOP_RESPONSE = new Set([
 ]);
 
 export default async function handler(req, res) {
-  const backendBase = (process.env.BACKEND_URL || 'http://15.207.50.26:3103').replace(/\/+$/, '');
+  let backendBase = (process.env.BACKEND_URL || 'https://aaryainnovtech.com/freshme').replace(/\/+$/, '');
+  if (backendBase.includes('15.207.50.26:3103')) {
+    backendBase = 'http://15.207.50.26';
+  }
 
   let subpath = '';
   if (req.query && req.query.path) {
@@ -35,11 +38,16 @@ export default async function handler(req, res) {
   if (!subpath) {
     const urlObj = new URL(req.url, 'http://localhost');
     subpath = urlObj.pathname.replace(/^\/api\/?/, '');
+    if (subpath === 'proxy') subpath = '';
   }
 
-  const cleanSubpath = subpath.replace(/^api\//, '');
+  const cleanSubpath = subpath.replace(/^api\//, '').replace(/^\/+/, '');
   const urlObj = new URL(req.url, 'http://localhost');
-  const targetUrl = `${backendBase}/api/${cleanSubpath}${urlObj.search}`;
+  urlObj.searchParams.delete('path');
+  const search = urlObj.searchParams.toString() ? `?${urlObj.searchParams.toString()}` : '';
+  const targetUrl = cleanSubpath
+    ? `${backendBase}/api/${cleanSubpath}${search}`
+    : `${backendBase}/api${search}`;
 
   try {
     const chunks = [];
@@ -56,9 +64,10 @@ export default async function handler(req, res) {
       headers[key] = value;
     }
 
-    // Pass trusted origin to avoid backend CSRF rejection on Vercel proxy
-    headers['origin'] = 'http://localhost:3001';
-    headers['referer'] = 'http://localhost:3001/';
+    // Set origin/referer to backend's expected client origin to pass CSRF origin check
+    const clientOrigin = process.env.CLIENT_ORIGIN || 'https://aaryainnovtech.com';
+    headers['origin'] = clientOrigin;
+    headers['referer'] = clientOrigin.endsWith('/') ? clientOrigin : `${clientOrigin}/`;
     headers['x-forwarded-proto'] = 'https';
 
     const response = await fetch(targetUrl, {
