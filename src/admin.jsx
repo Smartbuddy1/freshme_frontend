@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, CircleDollarSign, ExternalLink, Download, LayoutDashboard, LogOut, Package, Pencil, Plus, Printer, ReceiptText, RefreshCw, Settings as SettingsIcon, ShoppingBag, Trash2, Volume2, X } from 'lucide-react';
 import { api, money, today, dateTime, storageGet, storageSet, formatImageUrl, downloadPayments } from './api.js';
 import { Badge, Brand, Cup, ErrorNotice, Modal } from './components.jsx';
-import { Reports,Account } from './admin-extras.jsx';
+import { Reports } from './admin-extras.jsx';
 function useData(path, interval = 0) {
   const [data, setData] = useState(null); const [error, setError] = useState(''); const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce(n => n + 1), []);
@@ -28,13 +28,10 @@ export default function Admin() {
   const links = [
     ['', 'Dashboard', LayoutDashboard],
     ['orders', 'Orders', ReceiptText],
-    ...[
-      ['products', 'Products', Package],
-      ['payments', 'Payments', CircleDollarSign],
-      ['reports', 'Reports', LayoutDashboard],
-      ['settings', 'Settings', SettingsIcon]
-    ],
-    ['account', 'Account', SettingsIcon]
+    ['products', 'Products', Package],
+    ['payments', 'Payments', CircleDollarSign],
+    ['reports', 'Reports', LayoutDashboard],
+    ['settings', 'Settings', SettingsIcon]
   ];
   return (
     <div className="admin-shell">
@@ -61,7 +58,7 @@ export default function Admin() {
           <Route path="payments" element={<Payments/>}/>
           <Route path="settings" element={<ShopSettings {...common} logout={logout} onPasswordChange={() => setUser(null)}/>}/>
           <Route path="reports" element={<Reports/>}/>
-          <Route path="account" element={<Account onChanged={() => setUser(null)}/>}/>
+          <Route path="account" element={<Navigate to="/admin/settings" replace/>}/>
           <Route path="*" element={<Dashboard {...common}/>}/>
         </Routes>
       </main>
