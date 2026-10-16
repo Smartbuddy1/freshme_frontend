@@ -1459,8 +1459,8 @@ button svg, a svg { flex-shrink: 0; }
   animation: ticketDrop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .ticket-top { padding: 26px 22px; text-align: center; }
-.ticket-top .brand { display: inline-flex; justify-content: center; margin-bottom: 6px; }
-.ticket-top .brand-logo-img { height: 48px; max-width: 140px; }
+.ticket-top .brand { display: inline-flex; justify-content: center; margin-bottom: 8px; }
+.ticket-top .brand-logo-img { height: 72px; max-width: 220px; }
 .ticket-top > span:not(.ticket-date) {
   font-size: 11px;
   letter-spacing: 1.6px;

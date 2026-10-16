@@ -429,7 +429,7 @@ export function Token() {
 
               <div className="ticket">
                 <div className="ticket-top">
-                  <Brand compact to={menuPath()}/>
+                  <Brand to={menuPath()}/>
                   <span><Ticket size={16}/> YOUR HAPPY TICKET</span>
                   <p>{paid ? 'TOKEN NUMBER' : 'PAYMENT STATUS'}</p>
                   <div className={`token-number digital${!paid ? ' pending-number' : ''}`}>
