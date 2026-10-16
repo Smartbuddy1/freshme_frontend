@@ -1,5 +1,5 @@
-export const validPhone = value => /^[6-9]\d{9}$/.test(String(value).trim());
-export const checkoutPayload = (cart,phone,customerName,machineCode='DEFAULT') => ({machineCode,phone:phone.trim(),customerName:customerName.trim(),items:cart.map(({productId,size,qty})=>({productId,size,qty}))});
+export const validPhone = value => !value || /^[6-9]\d{9}$/.test(String(value).trim());
+export const checkoutPayload = (cart,phone='',customerName='',machineCode='DEFAULT') => ({machineCode,phone:(phone||'').trim(),customerName:(customerName||'').trim(),items:cart.map(({productId,size,qty})=>({productId,size,qty}))});
 export const cartTotal = cart => cart.reduce((total,item)=>total+item.qty*item.price,0);
 export const scopedStorage = (machine,key) => machine==='DEFAULT'?key:`${key}:${machine}`;
 export const orderPath = (machine,id) => machine==='DEFAULT'?`/order/${id}`:`/m/${encodeURIComponent(machine)}/order/${id}`;
