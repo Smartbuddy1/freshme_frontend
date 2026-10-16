@@ -9,7 +9,7 @@
   font-weight: 400;
   --berry: #d91b65;
   --navy: #0b2545;
-  --muted: #587083;
+  --muted: #40596b;
   --line: #dce9ed;
 }
 
@@ -641,7 +641,7 @@ button svg, a svg { flex-shrink: 0; }
 }
 
 .sold-out .slot-art { filter: grayscale(1); }
-.sold-out .slot-info { opacity: .6; }
+.sold-out .slot-info { opacity: 1; }
 .sold-ribbon {
   position: absolute;
   top: 55px;

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
-import { api, money, dateTime, loadCheckout, storageGet, storageSet, formatImageUrl } from './api.js';
+import { api, money, dateTime, loadCheckout, storageGet as readStorage, storageSet as writeStorage, formatImageUrl } from './api.js';
 import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty, unlockScroll } from './components.jsx';
 import logoImg from './assets/logo.png';
+import { validPhone,checkoutPayload,cartTotal,scopedStorage,orderPath,menuPath,changeSize as resizedCart } from './flow.js';
 const descriptions = { 'Kala Khatta': 'Tangy. Bold. A true original.', 'Blue Raspberry': 'A little blue, a lot of wow.', 'Green Apple': 'Crisp, zingy & oh-so-cool.', Orange: 'Sunshine in every icy sip.', Cola: 'Your classic, with a cool twist.', Mango: 'The king of summer. On ice.' };
 
 function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
@@ -144,13 +145,18 @@ function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
   );
 }
 export function Menu() {
+  const location=useLocation();
+  const machineCode=(useParams().machineCode || 'DEFAULT').toUpperCase();
+  const storageGet=(key,...args)=>readStorage(scopedStorage(machineCode,key),...args);
+  const storageSet=(key,...args)=>writeStorage(scopedStorage(machineCode,key),...args);
+  const [phone,setPhone]=useState('');const [customerName,setCustomerName]=useState('');
   const navigate = useNavigate(); const [menu, setMenu] = useState(null); const [error, setError] = useState(''); const [category, setCategory] = useState('All flavors');
   const [cart, setCart] = useState(() => storageGet('freshme-cart', [], true)); const [open, setOpen] = useState(false); const [drop, setDrop] = useState(''); const [toast, setToast] = useState('');
   const [paymentState, setPaymentState] = useState(''); const [busy, setBusy] = useState(false); const busyRef = useRef(false);
   const [demoOrder, setDemoOrder] = useState(null);
   const [activeOrder, setActiveOrder] = useState(null);
   const checkout = useRef(storageGet('freshme-checkout', null, true));
-  async function refresh() { try { const data = await api('/menu'); setMenu(data); setError(''); } catch (e) { setError(e.message); } }
+  async function refresh() { try { const data = await api('/menu?'+new URLSearchParams({machineCode})); setMenu(data); setError(''); } catch (e) { setError(e.message); } }
   useEffect(() => {
     refresh();
     const id = storageGet('freshme-last-order');
@@ -158,8 +164,8 @@ export function Menu() {
       api(`/orders/${id}`).then(o => {
         const age = Date.now() - new Date(o.createdAt).getTime();
         if (age < 30 * 60 * 1000 && ['PAID', 'PENDING_PAYMENT'].includes(o.status)) {
-          if (age < 3 * 60 * 1000) {
-            navigate(`/order/${id}`, { replace: true });
+          if (age < 3 * 60 * 1000 && !location.state?.browse) {
+            navigate(orderPath(machineCode,id), { replace: true });
           } else {
             setActiveOrder(o);
           }
@@ -170,7 +176,7 @@ export function Menu() {
   useEffect(() => { if (!open && !demoOrder && !busy) unlockScroll(); }, [open, demoOrder, busy]);
   useEffect(() => { storageSet('freshme-cart', cart, true); }, [cart]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 1800); return () => clearTimeout(t); }, [toast]);
-  const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0); const count = cart.reduce((sum, i) => sum + i.qty, 0);
+  const total = cartTotal(cart); const count = cart.reduce((sum, i) => sum + i.qty, 0);
   function invalidate() { checkout.current = null; storageSet('freshme-checkout',null,true); setPaymentState(''); }
   function changeCart(next) { invalidate(); setCart(next); }
   function add(p) {
@@ -192,22 +198,22 @@ export function Menu() {
   }
   function changeSize(index, label) {
     const current = cart[index]; const size = menu.products.find(p => p._id === current.productId)?.sizes.find(s => s.label === label); if (!size) return;
-    const next = cart.map((i, j) => j === index ? { ...i, size: label, price: size.price } : i);
-    const merged = []; for (const i of next) { const match = merged.find(m => m.productId === i.productId && m.size === i.size); if (match) match.qty = Math.min(20, match.qty + i.qty); else merged.push({ ...i }); } changeCart(merged);
+    changeCart(resizedCart(cart,index,size));
   }
   async function pay(e) {
     e?.preventDefault(); if (busyRef.current || !cart.length) return;
+    if(!validPhone(phone)){setError('Enter a valid 10-digit mobile number');return;}
     busyRef.current = true; setBusy(true); setPaymentState(''); setError('');
     try {
-      const payload = { items: cart.map(({ productId, size, qty }) => ({ productId, size, qty })) };
+      const payload = checkoutPayload(cart,phone,customerName,machineCode);
       const fingerprint = JSON.stringify(payload);
-      if (!checkout.current || checkout.current.fingerprint !== fingerprint || paymentState === 'failed') checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
+      if (!checkout.current || checkout.current.fingerprint !== fingerprint) checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
       storageSet('freshme-checkout', checkout.current, true);
       let order;
       try { order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } }); }
       catch (e) { if (e.status !== 410) throw e; checkout.current.idempotencyKey = crypto.randomUUID(); storageSet('freshme-checkout', checkout.current, true); order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } }); }
       storageSet('freshme-last-order', order.orderId);
-      if (['PAID','SERVED'].includes(order.status)) { navigate(`/order/${order.orderId}`); return; }
+      if (['PAID','SERVED'].includes(order.status)) { navigate(orderPath(machineCode,order.orderId)); return; }
       if (order.isDemo) {
         setOpen(false);
         setDemoOrder(order);
@@ -228,7 +234,7 @@ export function Menu() {
           storageSet('freshme-last-order', order.orderId);
           busyRef.current = false;
           setBusy(false);
-          navigate(`/order/${order.orderId}`, { state: { verification } });
+          navigate(orderPath(machineCode,order.orderId), { state: { verification } });
         },
         modal: {
           backdropclose: false,
@@ -248,7 +254,7 @@ export function Menu() {
                   storageSet('freshme-last-order', order.orderId);
                   busyRef.current = false;
                   setBusy(false);
-                  navigate(`/order/${order.orderId}`);
+                  navigate(orderPath(machineCode,order.orderId));
                   return;
                 }
               } catch {}
@@ -265,13 +271,14 @@ export function Menu() {
     } catch (e) { unlockScroll(); setOpen(true); setError(e.message); setPaymentState('failed'); busyRef.current = false; setBusy(false); }
   }
   const categories = ['All flavors', ...new Set(menu?.products.map(p => p.category) || [])];
-  if (menu && !menu.settings.acceptingOrders) return <><Header shopName={menu.settings.shopName}/><Empty title="Machine is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={`/order/${storageGet('freshme-last-order')}`}>View my token</Link>}</Empty></>;
-  return <div className="store-page"><Header shopName={menu?.settings.shopName}/>{activeOrder && (
-    <div className="active-order-banner" onClick={() => navigate(`/order/${activeOrder.orderId}`)}>
+  if(!menu && error)return <><Header machineCode={machineCode}/><Empty title="Machine unavailable"><ErrorNotice message={error} retry={refresh}/></Empty></>;
+  if (menu && !menu.settings.acceptingOrders) return <><Header shopName={menu.settings.shopName} machineCode={machineCode}/><Empty title="Machine is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={orderPath(machineCode,storageGet('freshme-last-order'))}>View my token</Link>}</Empty></>;
+  return <div className="store-page"><Header shopName={menu?.settings.shopName} machineCode={machineCode}/>{activeOrder && (
+    <button type="button" className="active-order-banner" onClick={() => navigate(orderPath(machineCode,activeOrder.orderId))}>
       <span className="active-order-badge">Active Order</span>
       <span>{activeOrder.status === 'PAID' ? `Token #${String(activeOrder.tokenNo).padStart(3, '0')} · Tap to view receipt` : 'Payment in progress · Tap to view token'}</span>
       <ArrowRight size={16} />
-    </div>
+    </button>
   )}<main className="store-main">
     <section className="hero">
       <div className="hero-copy">
@@ -285,12 +292,12 @@ export function Menu() {
         <span className="chill-sticker">100%<br/><b>CHILL</b></span>
       </div>
     </section>
-    <section id="flavors" className="menu-section"><nav className="category-tabs" aria-label="Flavor categories">{categories.map(c => <button key={c} className={category === c ? 'selected' : ''} aria-pressed={category === c} onClick={() => setCategory(c)}>{c === 'All flavors' && <Snowflake size={16}/>} {c}</button>)}</nav>
-    {!open && <ErrorNotice message={error} retry={refresh}/>}{!menu ? <Skeleton/> : <div className="product-grid">{menu.products.filter(p => category === 'All flavors' || p.category === category).map((p, index) => { const pQty = cart.filter(i => i.productId === p._id).reduce((sum, i) => sum + i.qty, 0); return <article key={p._id} className={`product-slot ${!p.available ? 'sold-out' : ''} ${drop === p._id ? 'dropping' : ''}`} style={{ '--flavor': p.flavorColor, '--i': index }}><div className="slot-art">{!p.available && <span className="sold-ribbon">SOLD OUT</span>}{p.imageUrl ? <img src={formatImageUrl(p.imageUrl)} alt={`${p.name} slush`} loading="lazy" width="180" height="190"/> : <Cup color={p.flavorColor}/>}<div className="slot-shelf"/></div><div className="slot-info"><h3>{p.name}</h3><p>{descriptions[p.name] || 'A fresh little burst of happiness.'}</p><div className="slot-bottom"><span>from <b>{money(Math.min(...p.sizes.map(s => s.price)))}</b></span>{pQty > 0 ? <div className="card-stepper" role="group" aria-label={`Quantity for ${p.name}`}><button type="button" disabled={busy} onClick={() => remove(p)} aria-label={`Remove one ${p.name}`} className="stepper-btn minus">{pQty === 1 ? <Trash2 size={14}/> : <Minus size={15}/>}</button><span className="stepper-qty">{pQty}</span><button type="button" disabled={busy || pQty >= 20} onClick={() => add(p)} aria-label={`Add one ${p.name}`} className="stepper-btn plus"><Plus size={15}/></button></div> : <button disabled={!p.available || busy} onClick={() => add(p)} aria-label={`Add ${p.name}`} className="add-button">{drop === p._id ? <Check size={18}/> : <Plus size={18}/>}</button>}</div></div></article>; })}</div>}{menu?.products.length === 0 && <Empty title="Fresh flavors are on their way">Check back in a little while.</Empty>}</section>
+    <section id="flavors" className="menu-section" aria-labelledby="flavors-title"><h2 id="flavors-title" className="sr-only">Choose a flavor</h2><nav className="category-tabs" aria-label="Flavor categories">{categories.map(c => <button key={c} className={category === c ? 'selected' : ''} aria-pressed={category === c} onClick={() => setCategory(c)}>{c === 'All flavors' && <Snowflake size={16}/>} {c}</button>)}</nav>
+    {!open && <ErrorNotice message={error} retry={refresh}/>}{!menu ? <Skeleton/> : <div className="product-grid">{menu.products.filter(p => category === 'All flavors' || p.category === category).map((p, index) => { const pQty = cart.filter(i => i.productId === p._id).reduce((sum, i) => sum + i.qty, 0); return <article key={p._id} className={`product-slot ${!p.available ? 'sold-out' : ''} ${drop === p._id ? 'dropping' : ''}`} style={{ '--flavor': p.flavorColor, '--i': index }}><div className="slot-art">{!p.available && <span className="sold-ribbon">SOLD OUT</span>}{p.imageUrl ? <img src={formatImageUrl(p.imageUrl)} alt={`${p.name} slush`} loading="lazy" width="180" height="190"/> : <Cup color={p.flavorColor}/>}<div className="slot-shelf"/></div><div className="slot-info"><span className="slot-code">{p.slotCode || `S${String(index+1).padStart(2,'0')}`}</span><h3>{p.name}</h3><p>{descriptions[p.name] || 'A fresh little burst of happiness.'}</p><div className="slot-bottom"><span>from <b>{money(Math.min(...p.sizes.map(s => s.price)))}</b></span>{pQty > 0 ? <div className="card-stepper" role="group" aria-label={`Quantity for ${p.name}`}><button type="button" disabled={busy} onClick={() => remove(p)} aria-label={`Remove one ${p.name}`} className="stepper-btn minus">{pQty === 1 ? <Trash2 size={14}/> : <Minus size={15}/>}</button><span className="stepper-qty">{pQty}</span><button type="button" disabled={busy || pQty >= 20} onClick={() => add(p)} aria-label={`Add one ${p.name}`} className="stepper-btn plus"><Plus size={15}/></button></div> : <button disabled={!p.available || busy} onClick={() => add(p)} aria-label={`Add ${p.name}`} className="add-button">{drop === p._id ? <Check size={18}/> : <Plus size={18}/>}</button>}</div></div></article>; })}</div>}{menu?.products.length === 0 && <Empty embedded title="Fresh flavors are on their way">Check back in a little while.</Empty>}</section>
     <div className="goodness-note"><Snowflake/><span>Good vibes. Great slush. <b>That's Fresh Me.</b></span><Snowflake/></div>
   </main>{toast && <div className="toast" role="status"><Check size={17}/>{toast}</div>}
-  {!open && !busy && count > 0 && <div className="cart-dock"><div className="cart-display"><div className="cart-count"><ShoppingBag size={21}/><span>{count}</span></div><div className="cart-total"><span>{`${count} ${count === 1 ? 'drink' : 'drinks'} in your tray`}</span><b className="digital">{money(total)}</b></div><button className="primary cart-pay" onClick={() => setOpen(true)}>Pay <ArrowRight size={18}/></button></div><span className="dock-caption"><ShieldCheck size={12}/> Safe payments. Happy sipping.</span></div>}
-  {open && <Modal title="Your happy little tray" close={() => !busy && setOpen(false)} className="cart-sheet"><form onSubmit={pay} className="cart-form"><div className="cart-items">{cart.map((i, index) => <div className="cart-item" key={`${i.productId}-${i.size}`}><Cup color={i.color} className="cart-cup"/><div className="cart-item-main"><div className="cart-item-top"><h3>{i.name}</h3><button type="button" className="icon-button" aria-label={`Remove ${i.name}`} disabled={busy} onClick={() => changeCart(cart.filter((_, j) => j !== index))}><Trash2 size={17}/></button></div><div className="size-chips">{menu.products.find(p => p._id === i.productId)?.sizes.map(s => <button type="button" key={s.label} disabled={busy} className={s.label === i.size ? 'active' : ''} onClick={() => changeSize(index, s.label)}>{s.label}</button>)}</div><div className="qty-row"><div className="stepper"><button type="button" disabled={busy || i.qty <= 1} aria-label={`Decrease ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty - 1 } : x))}><Minus size={15}/></button><b>{i.qty}</b><button type="button" disabled={busy || i.qty >= 20} aria-label={`Increase ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty + 1 } : x))}><Plus size={15}/></button></div><strong>{money(i.qty * i.price)}</strong></div></div></div>)}{!cart.length && <p className="empty-cart">Your tray is waiting for a little happiness.</p>}{paymentState && <div className="notice" role="status"><strong>{paymentState === 'cancelled' ? 'Checkout cancelled' : "Payment didn't go through"}</strong><p>{paymentState === 'cancelled' ? 'Your tray is saved. Ready when you are.' : 'You can retry safely with the same checkout. If money was deducted, check your token before paying again.'}</p>{storageGet('freshme-last-order') && <Link to={`/order/${storageGet('freshme-last-order')}`}>Check payment status</Link>}</div>}<ErrorNotice message={error}/></div><div className="checkout-footer"><div className="checkout-total"><span>Total happiness</span><strong>{money(total)}</strong></div><button type="submit" className="primary full" disabled={busy || !cart.length}><CreditCard size={18}/>{busy ? 'Opening secure checkout…' : `${paymentState ? 'Retry · ' : 'Pay '}${money(total)}`}<ArrowRight size={18}/></button><p className="secure-note"><ShieldCheck size={14}/> {menu?.settings?.isDemo ? 'Local Test Mode · Simulated Checkout' : 'Secure checkout by Razorpay'}</p></div></form></Modal>}
+  {!open && !busy && count > 0 && <section className="cart-dock" aria-label="Shopping tray"><div className="cart-display"><div className="cart-count"><ShoppingBag size={21}/><span>{count}</span></div><div className="cart-total"><span>{`${count} ${count === 1 ? 'drink' : 'drinks'} in your tray`}</span><b className="digital">{money(total)}</b></div><button className="primary cart-pay" onClick={() => setOpen(true)}>Pay <ArrowRight size={18}/></button></div><span className="dock-caption"><ShieldCheck size={12}/> Safe payments. Happy sipping.</span></section>}
+  {open && <Modal title="Your happy little tray" close={() => !busy && setOpen(false)} className="cart-sheet"><form onSubmit={pay} className="cart-form"><div className="cart-items"><div className="checkout-contact"><label>Mobile number<input name="phone" type="tel" inputMode="numeric" autoComplete="tel-national" required pattern="[6-9][0-9]{9}" minLength={10} maxLength={10} value={phone} onChange={e=>{setPhone(e.target.value);invalidate();}} aria-describedby="phone-help"/></label><small id="phone-help">10-digit Indian mobile number</small><label>Name (optional)<input name="customerName" autoComplete="name" maxLength={80} value={customerName} onChange={e=>{setCustomerName(e.target.value);invalidate();}}/></label></div>{cart.map((i, index) => <div className="cart-item" key={`${i.productId}-${i.size}`}><Cup color={i.color} className="cart-cup"/><div className="cart-item-main"><div className="cart-item-top"><h3>{i.name}</h3><button type="button" className="icon-button" aria-label={`Remove ${i.name}`} disabled={busy} onClick={() => changeCart(cart.filter((_, j) => j !== index))}><Trash2 size={17}/></button></div><div className="size-chips">{menu.products.find(p => p._id === i.productId)?.sizes.map(s => <button type="button" key={s.label} disabled={busy} className={s.label === i.size ? 'active' : ''} onClick={() => changeSize(index, s.label)}>{s.label}</button>)}</div><div className="qty-row"><div className="stepper"><button type="button" disabled={busy || i.qty <= 1} aria-label={`Decrease ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty - 1 } : x))}><Minus size={15}/></button><b>{i.qty}</b><button type="button" disabled={busy || i.qty >= 20} aria-label={`Increase ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty + 1 } : x))}><Plus size={15}/></button></div><strong>{money(i.qty * i.price)}</strong></div></div></div>)}{!cart.length && <p className="empty-cart">Your tray is waiting for a little happiness.</p>}{paymentState && <div className="notice" role="status"><strong>{paymentState === 'cancelled' ? 'Checkout cancelled' : "Payment didn't go through"}</strong><p>{paymentState === 'cancelled' ? 'Your tray is saved. Ready when you are.' : 'You can retry safely with the same checkout. If money was deducted, check your token before paying again.'}</p>{storageGet('freshme-last-order') && <Link to={orderPath(machineCode,storageGet('freshme-last-order'))}>Check payment status</Link>}</div>}<ErrorNotice message={error}/></div><div className="checkout-footer"><div className="checkout-total"><span>Total happiness</span><strong>{money(total)}</strong></div><button type="submit" className="primary full" disabled={busy || !cart.length}><CreditCard size={18}/>{busy ? 'Opening secure checkout…' : `${paymentState ? 'Retry · ' : 'Pay '}${money(total)}`}<ArrowRight size={18}/></button><p className="secure-note"><ShieldCheck size={14}/> {menu?.settings?.isDemo ? 'Local Test Mode · Simulated Checkout' : 'Secure checkout by Razorpay'}</p></div></form></Modal>}
   {demoOrder && <PaymentPortal
     order={demoOrder}
     busy={busy}
@@ -302,7 +309,7 @@ export function Menu() {
         storageSet('freshme-cart', [], true);
         setDemoOrder(null);
         setOpen(false);
-        navigate(`/order/${demoOrder.orderId}`);
+        navigate(orderPath(machineCode,demoOrder.orderId));
       } catch (err) {
         setError(err.message);
         setDemoOrder(null);
@@ -327,18 +334,24 @@ export function Menu() {
   </div>;
 }
 export function Token() {
+  const machineCode=(useParams().machineCode || 'DEFAULT').toUpperCase();
+  const storageGet=(key,...args)=>readStorage(scopedStorage(machineCode,key),...args);
+  const storageSet=(key,...args)=>writeStorage(scopedStorage(machineCode,key),...args);
   const { id } = useParams(); const [order, setOrder] = useState(null); const [error, setError] = useState(''); const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => { unlockScroll(); window.scrollTo(0, 0); }, []);
   useEffect(() => {
-    storageSet('freshme-last-order', id); let cancelled = false; let timer; let attempts = 0;
+    storageSet('freshme-last-order', id); let cancelled = false; let timer; let attempts = 0; let currentStatus; let lastVerification=0;
+    let pendingVerification=location.state?.verification || storageGet('freshme-verification',null,true);
     async function poll() {
       try {
-        const pending = location.state?.verification || storageGet('freshme-verification', null, true);
-        if (pending?.orderId === id) {
+        const pending = pendingVerification;
+        if (pending?.orderId === id && Date.now()-lastVerification>=12000) {
+          lastVerification=Date.now();
           try {
             const verifyRes = await api('/payments/verify', { method: 'POST', body: pending });
             storageSet('freshme-verification', null, true);
+            pendingVerification=null;
             if (verifyRes && ['PAID', 'SERVED'].includes(verifyRes.status)) {
               storageSet('freshme-cart', [], true);
               storageSet('freshme-checkout', null, true);
@@ -346,6 +359,7 @@ export function Token() {
           } catch { /* Auto-reconciliation on GET /api/orders/:id will handle fallback */ }
         }
         const data = await api(`/orders/${id}`);
+        currentStatus=data.status;
         if (!cancelled) {
           setOrder(data);
           setError('');
@@ -354,6 +368,7 @@ export function Token() {
             storageSet('freshme-cart', [], true);
             storageSet('freshme-checkout', null, true);
             storageSet('freshme-verification', null, true);
+            pendingVerification=null;
           }
         }
       } catch (e) {
@@ -361,7 +376,7 @@ export function Token() {
       } finally {
         attempts++;
         if (!cancelled) {
-          const isDone = order && ['PAID', 'SERVED'].includes(order.status);
+          const isDone = ['PAID', 'SERVED'].includes(currentStatus);
           const nextInterval = isDone ? 6000 : (attempts < 15 ? 1200 : 3000);
           timer = setTimeout(poll, nextInterval);
         }
@@ -371,10 +386,10 @@ export function Token() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [id]);
   const paid = ['PAID','SERVED'].includes(order?.status);
-  function browse() { unlockScroll(); navigate('/'); }
+  function browse() { unlockScroll(); navigate(menuPath(machineCode), {state:{browse:true}}); }
   return (
     <div className="token-page">
-      <Header/>
+      <Header shopName={order?.machine?.name} machineCode={machineCode}/>
       <main className="token-main">
         <button className="back-link" onClick={browse}><ArrowLeft size={16}/> Back to flavors</button>
         <ErrorNotice message={error}/>
@@ -389,9 +404,9 @@ export function Token() {
                 <p>{paid ? 'Your order is confirmed. Show the token below at the counter.' : 'If your payment completed, your token will appear here automatically.'}</p>
               </div>
 
-              <div className="ticket">
+              <ol className="order-progress" aria-label="Order progress"><li className={paid?'complete':''}>1. Payment {paid?'confirmed':'pending'}</li><li className={order.printed?'complete':''}>2. Receipt {order.printed?'printed':'queued'}</li><li className={order.status==='SERVED'?'complete':''}>3. {order.status==='SERVED'?'Served':'Collect at counter'}</li></ol><p className="machine-name">{order.machine?.name || 'Fresh Me'}</p><div className="ticket">
                 <div className="ticket-top">
-                  <Brand compact/>
+                  <Brand compact to={menuPath(machineCode)}/>
                   <span><Ticket size={16}/> YOUR HAPPY TICKET</span>
                   <p>{paid ? 'TOKEN NUMBER' : 'PAYMENT STATUS'}</p>
                   <div className={`token-number digital${!paid ? ' pending-number' : ''}`}>

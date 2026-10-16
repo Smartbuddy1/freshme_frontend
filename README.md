@@ -13,5 +13,9 @@ Start the backend separately. Vite forwards `/api` and `/healthz` to
 Production hosting must serve `dist/`, fall back to `index.html` for browser
 routes, and proxy `/api/` to the backend while preserving the request origin
 and cookies. Set backend `CLIENT_ORIGIN` to the frontend's HTTPS origin.
-The current frontend uses root hosting; subpath hosting needs additional
-base-path/router/proxy configuration. The printer agent runs on the shop PC.
+Customer QR routes use `/m/CODE`; `/admin` is the staff panel. Legacy `/freshme/`
+routes remain supported. Assets use `/freshme/assets/`, so expose that directory
+from the build and serve `index.html` for client routes. Keep the API at `/api/`
+so admin cookie paths work. The printer agent runs on the shop PC.
+
+`npm test` runs checkout, validation and machine-storage regressions.

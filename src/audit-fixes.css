@@ -1,0 +1,41 @@
+/* Contrast, responsive management controls and explicit order status. */
+.token-intro p,.ticket-top > span:not(.ticket-date),.ticket-top > p,.ticket-date,
+.ticket-summary small,.token-tip,.secure-note,.dock-caption { color:#40596b; }
+.slot-info p,.slot-bottom > span,.cart-total > span { color:#40596b; }
+.slot-code { display:block;font-size:12px;font-weight:700;color:#40596b;margin-bottom:4px; }
+.checkout-contact { display:grid;gap:12px;margin-bottom:20px; }
+.checkout-contact label { display:grid;gap:6px;font-weight:600; }
+.checkout-contact input { width:100%;min-height:44px;padding:10px;border:1px solid #7891a1;border-radius:10px;background:white;color:#0b2545; }
+.checkout-contact small { color:#40596b; }
+.machine-name { text-align:center;font-weight:700; }
+ol.order-progress { list-style:none;display:grid;gap:8px;padding:0; }
+ol.order-progress li { padding:10px;border:1px solid #b1c8d1;border-radius:10px;color:#40596b;background:white; }
+ol.order-progress .complete { color:#145339;background:#e2f4e9;border-color:#98c7b0; }
+.machine-selector { display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:24px;font-weight:700; }
+.machine-selector select { max-width:100%;padding:10px;min-height:44px;border:1px solid #7891a1;border-radius:8px;background:white; }
+.machine-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:20px;margin-top:24px; }
+.management-actions { display:flex;gap:8px;flex-wrap:wrap; }
+.management-actions button { min-height:44px;padding:8px 12px;border:1px solid #7891a1;border-radius:8px;background:#fff;color:#0b2545; }
+.settings-form dl { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.settings-form fieldset { display:grid;gap:8px; }
+.settings-form input[type=checkbox] { width:20px;min-height:20px;accent-color:#a01148;margin-right:8px; }
+.settings-form input,.settings-form select { max-width:100%; }
+.qr-poster { text-align:center;padding:16px; }
+.qr-poster canvas { display:block;margin:auto;max-width:100%; }
+.qr-poster a,.pairing-code,.event-list { overflow-wrap:anywhere; }
+.pairing-code { display:block;padding:16px;background:#edf5f7;font-size:16px;user-select:all; }
+.active-order-banner { width:100%;text-align:left; }
+.size-chips button.active { color:#a01148; }
+.ticket-summary span > b { color:#a01148; }
+.ticket-order-id { color:#40596b; }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid #174f9c;outline-offset:3px; }
+@media (max-width:768px) {
+  .admin-links { justify-content:flex-start;overflow-x:auto;overscroll-behavior-x:contain; }
+  .admin-links > a { flex:0 0 74px; }
+}
+@media print {
+  body > #root { visibility:hidden; }
+  dialog:has(.qr-poster),dialog:has(.qr-poster) * { visibility:visible; }
+  dialog:has(.qr-poster) { position:absolute;inset:0;max-height:none;width:100%;box-shadow:none;border:0; }
+  dialog:has(.qr-poster) .sheet-heading,.no-print { display:none!important; }
+}

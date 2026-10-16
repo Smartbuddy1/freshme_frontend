@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useParams } from 'react-router-dom';
 import '@fontsource/fredoka/latin-500.css';
 import '@fontsource/fredoka/latin-600.css';
 import '@fontsource/dm-sans/latin-400.css';
@@ -8,9 +8,11 @@ import '@fontsource/dm-sans/latin-500.css';
 import '@fontsource/dm-sans/latin-600.css';
 import '@fontsource/dm-sans/latin-700.css';
 import './styles.css';
+import './audit-fixes.css';
 import { Menu, Token } from './store.jsx';
 import { OfflineBanner, Empty, unlockScroll } from './components.jsx';
 const Admin = lazy(() => import('./admin.jsx'));
+function MachineMenu(){const {machineCode}=useParams();return <Menu key={machineCode}/>;}
 
 function ScrollReset() {
   const { pathname } = useLocation();
@@ -28,12 +30,14 @@ class Boundary extends React.Component {
 }
 createRoot(document.getElementById('root')).render(
   <Boundary>
-    <BrowserRouter basename="/freshme">
+    <BrowserRouter basename={location.pathname === '/freshme' || location.pathname.startsWith('/freshme/') ? '/freshme' : '/'}>
       <ScrollReset />
       <OfflineBanner />
       <Suspense fallback={<div className="page-loading">Getting things fresh…</div>}>
         <Routes>
           <Route path="/" element={<Menu />} />
+          <Route path="/m/:machineCode" element={<MachineMenu />} />
+          <Route path="/m/:machineCode/order/:id" element={<Token />} />
           <Route path="/order/:id" element={<Token />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Empty title="This flavor is off the menu"><a href="/freshme">Back to Fresh Me</a></Empty>} />
