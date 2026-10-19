@@ -12,7 +12,9 @@ import './audit-fixes.css';
 import { Menu, Token } from './store.jsx';
 import { OfflineBanner, Empty, unlockScroll } from './components.jsx';
 const Admin = lazy(() => import('./admin.jsx'));
-function MachineMenu(){const {machineCode}=useParams();return <Menu key={machineCode}/>;}
+const SuperAdmin = lazy(() => import('./super-admin.jsx'));
+function ShopMenu(){const {shopSlug}=useParams();return <Menu key={shopSlug}/>;}
+function ShopToken(){const {shopSlug,id}=useParams();return <Token key={shopSlug+id}/>;}
 
 function ScrollReset() {
   const { pathname } = useLocation();
@@ -36,8 +38,9 @@ createRoot(document.getElementById('root')).render(
       <Suspense fallback={<div className="page-loading">Getting things fresh…</div>}>
         <Routes>
           <Route path="/" element={<Menu />} />
-          <Route path="/m/:machineCode" element={<MachineMenu />} />
-          <Route path="/m/:machineCode/order/:id" element={<Token />} />
+          <Route path="/fresheme/:shopSlug" element={<ShopMenu />} />
+          <Route path="/fresheme/:shopSlug/order/:id" element={<ShopToken />} />
+          <Route path="/super-admin/*" element={<SuperAdmin />} />
           <Route path="/order/:id" element={<Token />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Empty title="This flavor is off the menu"><a href="/freshme">Back to Fresh Me</a></Empty>} />

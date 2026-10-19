@@ -5,6 +5,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/freshme/api/:path*",
+      "destination": "/api/proxy?path=:path*"
+    },
+    {
+      "source": "/freshme/api",
+      "destination": "/api/proxy"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/proxy?path=:path*"
     },

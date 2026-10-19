@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
-import { api, money, dateTime, loadCheckout, storageGet, storageSet, formatImageUrl } from './api.js';
+import { api, money, dateTime, loadCheckout, storageGet as readStorage, storageSet as writeStorage, formatImageUrl } from './api.js';
 import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty, unlockScroll } from './components.jsx';
 import logoImg from './assets/logo.png';
-import { validPhone,checkoutPayload,cartTotal,orderPath,menuPath,changeSize as resizedCart } from './flow.js';
+import { validPhone,checkoutPayload,cartTotal,orderPath as makeOrderPath,menuPath as makeMenuPath,shopStorageKey,shopRequestPath,changeSize as resizedCart } from './flow.js';
 const descriptions = { 'Kala Khatta': 'Tangy. Bold. A true original.', 'Blue Raspberry': 'A little blue, a lot of wow.', 'Green Apple': 'Crisp, zingy & oh-so-cool.', Orange: 'Sunshine in every icy sip.', Cola: 'Your classic, with a cool twist.', Mango: 'The king of summer. On ice.' };
 
 function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
@@ -146,6 +146,11 @@ function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
   );
 }
 export function Menu() {
+  const {shopSlug}=useParams();
+  const storageGet=(key,fallback,session)=>readStorage(shopStorageKey(shopSlug,key),fallback,session);
+  const storageSet=(key,value,session)=>writeStorage(shopStorageKey(shopSlug,key),value,session);
+  const orderPath=id=>makeOrderPath(id,shopSlug), menuPath=()=>makeMenuPath(shopSlug);
+  const shopApi=path=>api(shopRequestPath(path,shopSlug));
   const location=useLocation();
   const navigate = useNavigate(); const [menu, setMenu] = useState(null); const [error, setError] = useState(''); const [category, setCategory] = useState('All flavors');
   const [cart, setCart] = useState(() => storageGet('freshme-cart', [], true)); const [open, setOpen] = useState(false); const [drop, setDrop] = useState(''); const [toast, setToast] = useState('');
@@ -157,12 +162,12 @@ export function Menu() {
   const [phone, setPhone] = useState(() => storageGet('freshme-phone', ''));
   useEffect(() => { storageSet('freshme-phone', phone); }, [phone]);
   const checkout = useRef(storageGet('freshme-checkout', null, true));
-  async function refresh() { try { const data = await api('/menu'); setMenu(data); setError(''); } catch (e) { setError(e.message); } }
+  async function refresh() { try { const data = await shopApi('/menu'); setMenu(data); setError(''); } catch (e) { setError(e.message); } }
   useEffect(() => {
     refresh();
     const id = storageGet('freshme-last-order');
     if (id) {
-      api(`/orders/${id}`).then(o => {
+      shopApi(`/orders/${id}`).then(o => {
         const age = Date.now() - new Date(o.createdAt).getTime();
         if (age < 30 * 60 * 1000 && ['PAID', 'PENDING_PAYMENT'].includes(o.status)) {
           setActiveOrder(o);
@@ -235,7 +240,7 @@ export function Menu() {
       busyRef.current = false; setBusy(false); return;
     }
     try {
-      const payload = checkoutPayload(cart, trimmedPhone, customerName.trim());
+      const payload = checkoutPayload(cart, trimmedPhone, customerName.trim(), shopSlug);
       const fingerprint = JSON.stringify(payload);
       if (!checkout.current || checkout.current.fingerprint !== fingerprint) checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
       storageSet('freshme-checkout', checkout.current, true);
@@ -243,7 +248,7 @@ export function Menu() {
       try {
         order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } });
       } catch (e) {
-        if (e.status !== 410 && e.status !== 409) throw e;
+        if (e.status !== 410) throw e;
         checkout.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
         storageSet('freshme-checkout', checkout.current, true);
         order = await api('/orders', { method: 'POST', body: { ...payload, idempotencyKey: checkout.current.idempotencyKey } });
@@ -272,12 +277,13 @@ export function Menu() {
         handler: async response => {
           settled = true;
           unlockScroll();
-          const verification = { orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature };
+          const verification = { shopSlug, orderId: order.orderId, razorpayOrderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature };
           storageSet('freshme-verification', verification, true);
           storageSet('freshme-cart', [], true);
           checkout.current = null;
           storageSet('freshme-checkout', null, true);
           storageSet('freshme-last-order', order.orderId);
+          api('/payments/verify', { method: 'POST', body: verification }).catch(() => {});
           busyRef.current = false;
           setBusy(false);
           navigate(orderPath(order.orderId), { state: { verification } });
@@ -293,7 +299,7 @@ export function Menu() {
               setBusy(true);
               busyRef.current = true;
               try {
-                const check = await api(`/orders/${order.orderId}`);
+                const check = await shopApi(`/orders/${order.orderId}`);
                 if (['PAID', 'SERVED'].includes(check.status)) {
                   settled = true;
                   storageSet('freshme-cart', [], true);
@@ -319,9 +325,9 @@ export function Menu() {
     } catch (e) { unlockScroll(); setOpen(true); setError(e.message); setPaymentState('failed'); busyRef.current = false; setBusy(false); }
   }
   const categories = ['All flavors', ...new Set(menu?.products.map(p => p.category) || [])];
-  if(!menu && error)return <><Header/><Empty title="Menu unavailable"><ErrorNotice message={error} retry={refresh}/></Empty></>;
-  if (menu && !menu.settings.acceptingOrders) return <><Header shopName={menu.settings.shopName}/><Empty title="Shop is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={orderPath(storageGet('freshme-last-order'))}>View my token</Link>}</Empty></>;
-  return <div className="store-page"><Header shopName={menu?.settings.shopName}/>{activeOrder && (
+  if(!menu && error)return <><Header home={menuPath()}/><Empty title="Menu unavailable"><ErrorNotice message={error} retry={refresh}/></Empty></>;
+  if (menu && !menu.settings.acceptingOrders) return <><Header home={menuPath()} shopName={menu.settings.shopName}/><Empty title="Shop is resting, back soon"><Cup className="resting-cup"/><span>We're taking a little chill break. Your next happy sip is on its way.</span><button className="primary" onClick={refresh}>Check again</button>{storageGet('freshme-last-order') && <Link to={orderPath(storageGet('freshme-last-order'))}>View my token</Link>}</Empty></>;
+  return <div className="store-page"><Header home={menuPath()} shopName={menu?.settings.shopName}/>{activeOrder && (
     <div className="active-order-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <button type="button" style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1, textAlign: 'left', padding: 0 }} onClick={() => navigate(orderPath(activeOrder.orderId))}>
         <span className="active-order-badge">Active Order</span>
@@ -358,7 +364,7 @@ export function Menu() {
       setBusy(true);
       busyRef.current = true;
       try {
-        await api('/payments/demo-confirm', { method: 'POST', body: { orderId: demoOrder.orderId } });
+        await api('/payments/demo-confirm', { method: 'POST', body: { shopSlug, orderId: demoOrder.orderId } });
         unlockScroll();
         storageSet('freshme-cart', [], true);
         checkout.current = null;
@@ -396,6 +402,11 @@ export function Menu() {
   </div>;
 }
 export function Token() {
+  const {shopSlug}=useParams();
+  const storageGet=(key,fallback,session)=>readStorage(shopStorageKey(shopSlug,key),fallback,session);
+  const storageSet=(key,value,session)=>writeStorage(shopStorageKey(shopSlug,key),value,session);
+  const orderPath=id=>makeOrderPath(id,shopSlug), menuPath=()=>makeMenuPath(shopSlug);
+  const shopApi=path=>api(shopRequestPath(path,shopSlug));
   const { id } = useParams(); const [order, setOrder] = useState(null); const [error, setError] = useState(''); const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => { unlockScroll(); window.scrollTo(0, 0); }, []);
@@ -417,7 +428,7 @@ export function Token() {
             }
           } catch { /* Auto-reconciliation on GET /api/orders/:id will handle fallback */ }
         }
-        const data = await api(`/orders/${id}`);
+        const data = await shopApi(`/orders/${id}`);
         currentStatus=data.status;
         if (!cancelled) {
           setOrder(data);
@@ -450,7 +461,7 @@ export function Token() {
     }
     poll();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [id]);
+  }, [id,shopSlug]);
   const paid = ['PAID','SERVED'].includes(order?.status);
   function browse() {
     unlockScroll();
@@ -461,7 +472,7 @@ export function Token() {
   }
   return (
     <div className="token-page">
-      <Header shopName={order?.shopName}/>
+      <Header home={menuPath()} shopName={order?.shopName}/>
       <main className="token-main">
         <button className="back-link" onClick={browse}><ArrowLeft size={16}/> Back to flavors</button>
         <ErrorNotice message={error}/>

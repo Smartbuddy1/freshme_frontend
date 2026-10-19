@@ -23,7 +23,7 @@ ol.order-progress .complete { color:#145339;background:#e2f4e9;border-color:#98c
 .qr-poster { text-align:center;padding:16px; }
 .qr-poster canvas { display:block;margin:auto;max-width:100%; }
 .qr-poster a,.pairing-code,.event-list { overflow-wrap:anywhere; }
-.pairing-code { display:block;padding:16px;background:#edf5f7;font-size:16px;user-select:all; }
+.pairing-code { display:block;padding:14px 18px;background:#eef6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:24px;font-weight:700;letter-spacing:4px;text-align:center;color:#0b2545;user-select:all; }
 .active-order-banner { width:100%;text-align:left; }
 .size-chips button.active { color:#a01148; }
 .ticket-summary span > b { color:#a01148; }
@@ -39,3 +39,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
   dialog:has(.qr-poster) { position:absolute;inset:0;max-height:none;width:100%;box-shadow:none;border:0; }
   dialog:has(.qr-poster) .sheet-heading,.no-print { display:none!important; }
 }
+
+.shop-context-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #dce3ec;padding-bottom:14px;margin-bottom:18px}.shop-context-bar a{color:#b31953;font-size:13px}.mobile-admin-logout{display:none}@media(max-width:700px){.mobile-admin-logout{display:inline-flex}.shop-context-bar strong{width:100%}}
+
+.shop-identity{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0;font-size:12px;min-width:0}.shop-identity code{overflow-wrap:anywhere;user-select:all;padding:5px 8px;background:#edf1f7;color:#233550;border-radius:6px}.shop-identity button{font:inherit;padding:6px 9px;border:1px solid #ccd5e2;border-radius:7px;background:white;color:#233550;cursor:pointer}.shop-identity small{width:100%;color:#465b72}.printer-connection{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;font-size:12px}.printer-connection>span{padding:7px 10px;border-radius:7px}.connection-online{color:#146045;background:#e7f6ee}.connection-offline{color:#5a4550;background:#f3edf1}.client-last-seen{display:block;color:#56657a;font-size:11px;line-height:1.6;margin-bottom:12px}

@@ -1,106 +1,37 @@
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-const HOP_BY_HOP_REQUEST = new Set([
-  'host',
-  'connection',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-]);
-
-const HOP_BY_HOP_RESPONSE = new Set([
-  'connection',
-  'keep-alive',
-  'transfer-encoding',
-  'content-encoding',
-  'content-length',
-  'upgrade',
-]);
-
-export default async function handler(req, res) {
-  let backendBase = (process.env.BACKEND_URL || 'https://aaryainnovtech.com/freshme').replace(/\/+$/, '');
-  if (backendBase.includes('15.207.50.26:3103')) {
-    backendBase = 'http://15.207.50.26';
-  }
-
-  let subpath = '';
-  if (req.query && req.query.path) {
-    subpath = Array.isArray(req.query.path) ? req.query.path.join('/') : String(req.query.path);
-  }
-  if (!subpath) {
-    const urlObj = new URL(req.url, 'http://localhost');
-    subpath = urlObj.pathname.replace(/^\/api\/?/, '');
-    if (subpath === 'proxy') subpath = '';
-  }
-
-  const cleanSubpath = subpath.replace(/^api\//, '').replace(/^\/+/, '');
-  const urlObj = new URL(req.url, 'http://localhost');
-  urlObj.searchParams.delete('path');
-  const search = urlObj.searchParams.toString() ? `?${urlObj.searchParams.toString()}` : '';
-  const targetUrl = cleanSubpath
-    ? `${backendBase}/api/${cleanSubpath}${search}`
-    : `${backendBase}/api${search}`;
-
-  try {
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const bodyBuffer = chunks.length && !['GET', 'HEAD'].includes(req.method)
-      ? Buffer.concat(chunks)
-      : undefined;
-
-    const headers = {};
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (HOP_BY_HOP_REQUEST.has(key.toLowerCase())) continue;
-      headers[key] = value;
-    }
-
-    // Set origin/referer to backend's expected client origin to pass CSRF origin check
-    const clientOrigin = process.env.CLIENT_ORIGIN || 'https://aaryainnovtech.com';
-    headers['origin'] = clientOrigin;
-    headers['referer'] = clientOrigin.endsWith('/') ? clientOrigin : `${clientOrigin}/`;
-    headers['x-forwarded-proto'] = 'https';
-
-    const response = await fetch(targetUrl, {
-      method: req.method,
-      headers,
-      body: bodyBuffer,
-      redirect: 'manual',
-    });
-
+export const config={api:{bodyParser:false}};
+const hop=new Set(['host','connection','keep-alive','proxy-authenticate','proxy-authorization','te','trailer','transfer-encoding','upgrade']);
+const responseHop=new Set([...hop,'content-encoding','content-length','set-cookie']);
+export function proxyTarget(req,base=process.env.BACKEND_URL){
+  if(!base)throw new Error('Backend URL is not configured');
+  const target=new URL(base);
+  if(target.username||target.password||target.search||target.hash)throw new Error('Invalid backend URL');
+  const local=['localhost','127.0.0.1','[::1]'].includes(target.hostname);
+  if(target.protocol!=='https:'&&!(local&&target.protocol==='http:'))throw new Error('Backend requires HTTPS');
+  const incoming=new URL(req.url,'http://localhost');
+  let path=req.query?.path;
+  path=Array.isArray(path)?path.join('/'):path===undefined?incoming.pathname.replace(/^\/api\/?/,''):String(path);
+  if(path==='proxy')path='';
+  path=path.replace(/^api\//,'');
+  // Disallow path normalization, encoded separators and query/fragment injection.
+  if(path&&(!/^[A-Za-z0-9_/-]+(?:\.[A-Za-z0-9_-]+)?$/.test(path)||path.startsWith('/')||path.split('/').some(part=>!part||part==='.'||part==='..')))throw new Error('Invalid API path');
+  incoming.searchParams.delete('path');
+  target.pathname=target.pathname.replace(/\/+$/,'')+'/api'+(path?'/'+path:'');
+  target.search=incoming.searchParams.toString();return target;
+}
+export default async function handler(req,res){
+  let target;try{target=proxyTarget(req);}catch{return res.status(500).json({error:'Backend proxy configuration or API path is invalid'});}
+  try{
+    const chunks=[];let size=0;
+    for await(const chunk of req){const buffer=Buffer.from(chunk);size+=buffer.length;if(size>6*1024*1024)return res.status(413).json({error:'Request too large'});chunks.push(buffer);}
+    const headers={};const connection=String(req.headers.connection||'').toLowerCase().split(',').map(v=>v.trim());
+    for(const [key,value] of Object.entries(req.headers))if(!hop.has(key.toLowerCase())&&!connection.includes(key.toLowerCase())&&value!==undefined)headers[key]=value;
+    delete headers['content-length'];delete headers['x-forwarded-host'];delete headers['x-forwarded-for'];
+    // Preserve the caller's Origin/Referer. Backend CSRF checks must see the real origin.
+    const response=await fetch(target,{method:req.method,headers,body:['GET','HEAD'].includes(req.method)?undefined:Buffer.concat(chunks),redirect:'manual',signal:AbortSignal.timeout(20000)});
     res.status(response.status);
-
-    // Forward response headers safely without hop-by-hop conflicts
-    response.headers.forEach((value, key) => {
-      if (!HOP_BY_HOP_RESPONSE.has(key.toLowerCase())) {
-        res.setHeader(key, value);
-      }
-    });
-
-    // Forward Set-Cookie headers accurately
-    if (typeof response.headers.getSetCookie === 'function') {
-      const cookies = response.headers.getSetCookie();
-      if (cookies && cookies.length) {
-        res.setHeader('Set-Cookie', cookies);
-      }
-    }
-
-    const responseBuffer = Buffer.from(await response.arrayBuffer());
-    res.send(responseBuffer);
-  } catch (error) {
-    console.error('Vercel proxy to backend failed:', error);
-    res.status(502).json({
-      error: 'Backend gateway unreachable',
-      details: error.message,
-    });
-  }
+    const responseConnection=(response.headers.get('connection')||'').toLowerCase().split(',').map(v=>v.trim());
+    response.headers.forEach((value,key)=>{if(!responseHop.has(key)&&!responseConnection.includes(key))res.setHeader(key,value);});
+    const cookies=response.headers.getSetCookie?.();if(cookies?.length)res.setHeader('Set-Cookie',cookies);
+    const buffer=Buffer.from(await response.arrayBuffer());res.send(buffer);
+  }catch{res.status(502).json({error:'Backend gateway unreachable'});}
 }
