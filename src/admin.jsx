@@ -286,7 +286,7 @@ export default function Admin() {
 
   return (
     <div className="admin-shell">
-      <MobileNavigation home={adminPath('/admin')} title={user.shop?.name || 'Client Admin'} links={links.map(([path,label,Icon])=>({to:adminPath(`/admin${path?`/${path}`:''}`),label,Icon,end:!path}))} onLogout={logout} customerUrl={menuPath(user.shop?.slug)} backToPlatform={user.role==='SUPER_ADMIN'}/>
+      <MobileNavigation home={adminPath('/admin')} title={user.shop?.name || 'Client Admin'} links={links.map(([path,label,Icon])=>({to:adminPath(`/admin${path?`/${path}`:''}`),label,Icon,end:!path}))} onLogout={logout} backToPlatform={user.role==='SUPER_ADMIN'}/>
       <aside className="admin-nav">
         <Brand compact to={adminPath('/admin')} />
         <div className="platform-role">
@@ -307,10 +307,6 @@ export default function Admin() {
             <strong>{user.shop?.name || 'Fresh Me Counter'}</strong>
             <small>{user.email}</small>
           </div>
-          <Link to={menuPath(user.shop?.slug)} target="_blank" rel="noopener noreferrer" className="nav-store">
-            <ExternalLink size={15} />
-            <span>Open customer menu</span>
-          </Link>
           <button className="nav-logout-btn" onClick={logout} title="Sign out" aria-label="Sign out">
             <LogOut size={16} />
             <span>Sign out</span>
