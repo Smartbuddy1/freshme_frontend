@@ -8,9 +8,10 @@
 .admin-date-pill,.admin-profile-pill{display:flex;align-items:center;gap:8px}
 .admin-profile-avatar{display:grid;place-items:center;border-radius:50%;background:#d91b65;color:white;font-weight:700;width:34px;height:34px}
 .admin-profile-name{font-weight:600;color:#102139}
-.admin-nav-footer .nav-store-btn,.admin-nav-footer .nav-logout-btn{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border:1px solid #ffffff22;border-radius:10px;background:#ffffff0d;color:#e2e8f0;text-decoration:none;font:inherit;font-size:13px;text-align:left;cursor:pointer}
-.admin-nav-footer .nav-store-btn:hover,.admin-nav-footer .nav-logout-btn:hover{background:#ffffff18;color:white}
-.admin-nav-footer .nav-logout-btn{margin-top:10px}
+.admin-nav-footer .nav-store-btn,.admin-nav-footer .nav-logout-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:9px;background:#f4f8fb;color:#526176;text-decoration:none;font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;transition:all 0.15s}
+.admin-nav-footer .nav-store-btn:hover{background:#e8f0f6;color:#0b2545;border-color:#cbd5e1}
+.admin-nav-footer .nav-logout-btn:hover{background:#fee2e2;color:#ef4444;border-color:#fecaca}
+.admin-nav-footer .nav-logout-btn{margin-top:6px}
 .stat-body{min-width:0}.stat-value,.platform-metrics strong{overflow-wrap:anywhere}
 .admin-main .stat-note,.admin-main .order-time{color:#52647a}
 .admin-main .btn-action-serve{background:#047857;color:white}

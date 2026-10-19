@@ -24,7 +24,8 @@ import {
   X,
   TrendingUp,
   Clock,
-  Sparkles
+  Sparkles,
+  Store
 } from 'lucide-react';
 import {MobileNavigation} from './mobile-navigation.jsx';
 import heroCupsImg from './assets/hero-cups.jpg';
@@ -132,12 +133,13 @@ function Toggle({ checked, onChange, label, disabled }) {
   );
 }
 
-function PageTop({ title, subtitle, children }) {
+function PageTop({ title, subtitle, eyebrow = 'COUNTER CONTROL', children }) {
   return (
     <header className="admin-top">
       <div className="admin-top-text">
+        {eyebrow && <p className="platform-eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
+        {subtitle && <p className="platform-detail">{subtitle}</p>}
       </div>
       <div className="admin-top-actions">{children}</div>
     </header>
@@ -284,7 +286,9 @@ export default function Admin() {
       <MobileNavigation home={adminPath('/admin')} title={user.shop?.name || 'Client Admin'} links={links.map(([path,label,Icon])=>({to:adminPath(`/admin${path?`/${path}`:''}`),label,Icon,end:!path}))} onLogout={logout} customerUrl={menuPath(user.shop?.slug)} backToPlatform={user.role==='SUPER_ADMIN'}/>
       <aside className="admin-nav">
         <Brand compact to={adminPath('/admin')} />
-        <span className="admin-label">BEHIND THE COUNTER</span>
+        <div className="platform-role">
+          <Store size={15} /> CLIENT ADMIN
+        </div>
 
         <nav className="admin-links">
           {links.map(([path, label, Icon]) => (
@@ -295,24 +299,40 @@ export default function Admin() {
           ))}
         </nav>
 
-        <Link to={menuPath(user.shop?.slug)} target="_blank" rel="noopener noreferrer" className="nav-store">
-          <ExternalLink size={15} />
-          <span>Open customer menu</span>
-        </Link>
-        <button className="secondary logout" onClick={logout} title="Sign out" aria-label="Sign out">
-          <LogOut size={16} />
-          <span>Sign out</span>
-        </button>
+        <div className="admin-nav-footer">
+          <div className="admin-nav-user">
+            <strong>{user.shop?.name || 'Fresh Me Counter'}</strong>
+            <small>{user.email}</small>
+          </div>
+          <Link to={menuPath(user.shop?.slug)} target="_blank" rel="noopener noreferrer" className="nav-store">
+            <ExternalLink size={15} />
+            <span>Open customer menu</span>
+          </Link>
+          <button className="nav-logout-btn" onClick={logout} title="Sign out" aria-label="Sign out">
+            <LogOut size={16} />
+            <span>Sign out</span>
+          </button>
+        </div>
       </aside>
 
       <main className="admin-main" key={user.shop?.id}>
-        <div className="admin-top-bar"><div className="admin-shop-context"><strong>{user.shop?.name}</strong><ShopIdentity id={user.shop?.slug}/></div></div>
         {user.role === 'SUPER_ADMIN' && (
           <div className="super-admin-return-bar">
-            <span>Managing {user.shop?.name}</span>
-            <Link to="/super-admin/clients" className="text-button" aria-label="Back to Super Admin">← Back to Super Admin</Link>
+            <div className="return-bar-content">
+              <span className="return-bar-badge">SUPER ADMIN VIEW</span>
+              <span>Managing <strong>{user.shop?.name}</strong></span>
+            </div>
+            <Link to="/super-admin/clients" className="return-bar-btn" aria-label="Back to Super Admin">
+              ← Back to Super Admin
+            </Link>
           </div>
         )}
+        <div className="admin-top-bar">
+          <div className="admin-shop-context">
+            <strong>{user.shop?.name}</strong>
+            <ShopIdentity id={user.shop?.slug}/>
+          </div>
+        </div>
         <ErrorNotice message={error} />
         <Routes>
           <Route index element={<Dashboard {...common} />} />
@@ -381,32 +401,35 @@ function OrderTable({ orders, reload, notify, highlighted = new Set() }) {
             <tbody>
               {orders.map(o => (
                 <tr key={o._id} className={highlighted.has(o._id) ? 'new-order' : ''}>
-                  <td>
-                    <span className="table-token">{o.tokenNo ? `#${String(o.tokenNo).padStart(3, '0')}` : '—'}</span>
-                    {(o.orderCode || (o.tokenNo && `ORD-${100 + o.tokenNo}`)) && (
-                      <small style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginTop: '2px', fontFamily: 'monospace' }}>
-                        {o.orderCode || `ORD-${100 + o.tokenNo}`}
-                      </small>
-                    )}
+                  <td className="token-cell">
+                    <span className="token-capsule">
+                      <span className="token-number">{o.tokenNo ? `#${String(o.tokenNo).padStart(3, '0')}` : '—'}</span>
+                      {(o.orderCode || (o.tokenNo && `ORD-${100 + o.tokenNo}`)) && (
+                        <span className="token-code">{o.orderCode || `ORD-${100 + o.tokenNo}`}</span>
+                      )}
+                    </span>
                   </td>
                   <td className="order-item-cell">
                     <div className="table-items">
                       {(o.customerName || o.phone) && (
                         <div className="customer-tag">
-                          {o.customerName && <strong>{o.customerName}</strong>}
-                          {o.customerName && o.phone ? ' · ' : ''}
-                          {o.phone && <span>📱 {o.phone}</span>}
+                          {o.customerName && <strong className="customer-name">{o.customerName}</strong>}
+                          {o.phone && <span className="customer-phone">📱 {o.phone}</span>}
                         </div>
                       )}
-                      {o.items.map((i, j) => (
-                        <div key={j}>
-                          {i.qty}× {i.name} <span className="text-slate-500">({i.size})</span>
-                        </div>
-                      ))}
-                      <small>{dateTime(o.createdAt)} IST</small>
+                      <div className="order-items-list">
+                        {o.items.map((i, j) => (
+                          <div key={j} className="order-item-line">
+                            <span className="item-qty">{i.qty}×</span>
+                            <span className="item-name">{i.name}</span>
+                            <span className="item-size">({i.size})</span>
+                          </div>
+                        ))}
+                      </div>
+                      <small className="order-time">{dateTime(o.createdAt)} IST</small>
                     </div>
                   </td>
-                  <td data-label="Total">
+                  <td data-label="Total" className="total-cell">
                     <strong>{money(o.total)}</strong>
                   </td>
                   <td data-label="Payment">
@@ -420,19 +443,21 @@ function OrderTable({ orders, reload, notify, highlighted = new Set() }) {
                   <td className="order-action-cell">
                     <div className="row-actions">
                       <button
+                        className="btn-action-serve"
                         disabled={!!busy || o.status !== 'PAID'}
                         onClick={() => action(o, 'serve')}
                         title="Mark order as served to customer"
                       >
-                        <Check size={13} />
+                        <Check size={14} />
                         <span>Mark served</span>
                       </button>
                       <button
+                        className="btn-action-reprint"
                         disabled={!!busy || !['PAID', 'SERVED'].includes(o.status)}
                         onClick={() => action(o, 'reprint')}
                         title="Reprint receipt on thermal printer"
                       >
-                        <Printer size={13} />
+                        <Printer size={14} />
                         <span>Reprint</span>
                       </button>
                     </div>
@@ -476,8 +501,9 @@ function Dashboard({ notify }) {
     <>
       <div className="admin-top">
         <div>
+          <p className="platform-eyebrow">STORE OVERVIEW</p>
           <h1>A fresh start.</h1>
-          <p>Here’s what’s happening at your happy little counter.</p>
+          <p className="platform-detail">Here’s what’s happening at your counter today in Indian Standard Time.</p>
         </div>
         <span className="admin-date">{currentDateFormatted}</span>
       </div>
@@ -488,52 +514,71 @@ function Dashboard({ notify }) {
         <div className="skeleton admin-skeleton" />
       ) : (
         <>
-          <PrinterConnection shop={data}/>
           <div className="stats-grid">
-            <div className="stat-card">
-              <ShoppingBag size={19} />
-              <span>Today’s orders</span>
-              <b>{data.todayOrders}</b>
-              <small>Paid & served</small>
+            <div className="stat-card stat-orders">
+              <div className="stat-header">
+                <span className="stat-label">Today’s orders</span>
+                <div className="stat-icon-box">
+                  <ShoppingBag size={18} />
+                </div>
+              </div>
+              <strong className="stat-value">{data.todayOrders}</strong>
+              <small className="stat-note">Paid & served</small>
             </div>
 
-            <div className="stat-card">
-              <CircleDollarSign size={19} />
-              <span>Today’s revenue</span>
-              <b>{money(data.revenue)}</b>
-              <small>Gross collected · IST</small>
+            <div className="stat-card stat-revenue">
+              <div className="stat-header">
+                <span className="stat-label">Today’s revenue</span>
+                <div className="stat-icon-box">
+                  <CircleDollarSign size={18} />
+                </div>
+              </div>
+              <strong className="stat-value">{money(data.revenue)}</strong>
+              <small className="stat-note">Gross collected · IST</small>
             </div>
 
-            <div className="stat-card">
-              <Printer size={19} />
-              <span>Pending prints</span>
-              <b>{data.pendingPrints}</b>
-              <small>Waiting at the counter</small>
+            <div className="stat-card stat-pending">
+              <div className="stat-header">
+                <span className="stat-label">Pending prints</span>
+                <div className="stat-icon-box">
+                  <Printer size={18} />
+                </div>
+              </div>
+              <strong className="stat-value">{data.pendingPrints}</strong>
+              <small className="stat-note">Waiting at the counter</small>
             </div>
 
-            <div className="stat-card">
-              <ReceiptText size={19} />
-              <span>Failed prints</span>
-              <b>{data.failedPrints}</b>
-              <small>Need your attention</small>
+            <div className="stat-card stat-failed">
+              <div className="stat-header">
+                <span className="stat-label">Failed prints</span>
+                <div className="stat-icon-box">
+                  <ReceiptText size={18} />
+                </div>
+              </div>
+              <strong className="stat-value">{data.failedPrints}</strong>
+              <small className="stat-note">{data.failedPrints === 0 ? 'Everything running smoothly' : 'Need your attention'}</small>
             </div>
           </div>
 
           <div className="printer-panel">
             <div className="printer-info">
-              <Printer size={26} />
+              <div className="printer-icon-wrap">
+                <Printer size={22} />
+              </div>
               <div>
-                <h3>Your counter connection</h3>
+                <div className="printer-title-wrap">
+                  <h3>Thermal Receipt Printer</h3>
+                  <PrinterConnection shop={data} />
+                </div>
                 <p>
                   {data.printerStatus === 'Agent not running'
-                    ? 'Start the Fresh Me agent on the shop laptop.'
-                    : 'Receipts print automatically when payments arrive.'}
+                    ? 'Start the Fresh Me agent on the shop computer (start-agent.bat) to print receipts automatically.'
+                    : 'Receipts print automatically as soon as customer payments arrive.'}
                 </p>
               </div>
             </div>
             <div className="printer-actions">
-              <Badge status={data.printerStatus} />
-              <button className="secondary" disabled={testBusy} onClick={testPrint}>
+              <button className="btn-test-print" disabled={testBusy} onClick={testPrint}>
                 <Printer size={15} />
                 <span>{testBusy ? 'Sending…' : 'Test print'}</span>
               </button>
@@ -546,7 +591,7 @@ function Dashboard({ notify }) {
                 <h2>Fresh off the menu</h2>
                 <p>Your 10 latest orders · updates automatically</p>
               </div>
-              <Link to={adminPath('/admin/orders')}>
+              <Link to={adminPath('/admin/orders')} className="panel-link">
                 <span>All orders</span>
                 <ArrowRight size={14} />
               </Link>
