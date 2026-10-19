@@ -33,7 +33,7 @@ import { api, money, today, dateTime, storageGet, storageSet, formatImageUrl, do
 import { Badge, Brand, Cup, ErrorNotice, Modal } from './components.jsx';
 import {ShopIdentity,PrinterConnection} from './shop-connection.jsx';
 import { menuPath } from './flow.js';
-import { Reports, AgentSettings } from './admin-extras.jsx';
+import { Reports } from './admin-extras.jsx';
 
 export function Sparkline({ color = '#ec4899', id = '1' }) {
   return (
@@ -339,7 +339,7 @@ export default function Admin() {
           <Route path="products" element={<Products {...common} />} />
           <Route path="orders" element={<Orders {...common} />} />
           <Route path="payments" element={<Payments />} />
-          <Route path="settings" element={<ShopSettings {...common} onPasswordChange={() => setUser(null)} />} />
+          <Route path="settings" element={<ShopSettings {...common} user={user} onPasswordChange={() => setUser(null)} />} />
           <Route path="reports" element={<Reports />} />
           <Route path="account" element={<Navigate to={adminPath("/admin/settings")} replace />} />
           <Route path="*" element={<Dashboard {...common} />} />
@@ -1308,34 +1308,40 @@ function Payments() {
   );
 }
 
-function ShopSettings({ notify, onPasswordChange }) {
+function ShopSettings({ notify, onPasswordChange, user }) {
   const { data, error, reload } = useData('/admin/settings');
-  const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [acceptingOrders, setAcceptingOrders] = useState(true);
 
   useEffect(() => {
-    if (data)
-      setForm({
-        shopName: data.shopName,
-        tagline: data.tagline,
-        acceptingOrders: data.acceptingOrders,
-        receiptHeader: data.receiptHeader || '',
-        receiptFooter: data.receiptFooter || 'Thank you!',
-        prepCopy: Boolean(data.prepCopy),
-        batchSize: data.batchSize || 5
-      });
+    if (data) {
+      setAcceptingOrders(Boolean(data.acceptingOrders));
+    }
   }, [data]);
 
-  async function save(e) {
-    e.preventDefault();
+  async function toggleOrders(nextVal) {
+    if (!data || busy) return;
     setBusy(true);
     setActionError('');
     try {
-      await api('/admin/settings', { method: 'PUT', body: form });
-      notify('Shop settings saved successfully');
+      await api('/admin/settings', {
+        method: 'PUT',
+        body: {
+          shopName: data.shopName || user?.shop?.name || 'Fresh Me',
+          tagline: data.tagline || '',
+          acceptingOrders: nextVal,
+          receiptHeader: data.receiptHeader || '',
+          receiptFooter: data.receiptFooter || 'Thank you!',
+          prepCopy: Boolean(data.prepCopy),
+          batchSize: data.batchSize || 5
+        }
+      });
+      setAcceptingOrders(nextVal);
+      notify(nextVal ? 'Storefront is now OPEN for customer orders' : 'Storefront ordering PAUSED');
+      reload();
     } catch (e) {
       setActionError(e.message);
     } finally {
@@ -1352,7 +1358,9 @@ function ShopSettings({ notify, onPasswordChange }) {
         method: 'POST',
         body: { currentPassword, newPassword }
       });
-      notify('Password updated. Please sign in again.');
+      notify('Password updated successfully. Please sign in again.');
+      setCurrentPassword('');
+      setNewPassword('');
       onPasswordChange();
     } catch (e) {
       setActionError(e.message);
@@ -1361,35 +1369,38 @@ function ShopSettings({ notify, onPasswordChange }) {
     }
   }
 
+  const shopSlug = data?.shopSlug || user?.shop?.slug;
+  const shopName = data?.shopName || user?.shop?.name || 'Fresh Me';
+
   return (
     <>
       <PageTop
-        title="Shop & System Settings"
-        subtitle="Control storefront availability, receipt custom headers, and security."
+        title="Settings & Security"
+        subtitle="View your shop identity and manage your administrator login credentials."
+        eyebrow="CONFIGURATION"
       />
       <ErrorNotice message={error || actionError} retry={reload} />
-      {!form ? (
+      {!data ? (
         <div className="skeleton admin-skeleton" />
       ) : (
-        <div className="settings-grid"><AgentSettings notify={notify}/>
+        <div className="settings-grid single-col">
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <h2>Storefront & Receipt Setup</h2>
-                <p>Customize brand texts printed on bills</p>
+                <h2>Shop Identity</h2>
+                <p>Your shop name, unique ID and ordering status</p>
               </div>
             </div>
-            <form className="settings-form" onSubmit={save}>
-              <div
-                className={`store-status-card ${form.acceptingOrders ? 'status-open' : 'status-paused'}`}
-              >
+            <div className="settings-form">
+              <div className={`store-status-card ${acceptingOrders ? 'status-open' : 'status-paused'}`}>
                 <Toggle
-                  checked={form.acceptingOrders}
-                  onChange={v => setForm({ ...form, acceptingOrders: v })}
-                  label={form.acceptingOrders ? 'Storefront is Open (Accepting Orders)' : 'Storefront Paused (Resting)'}
+                  checked={acceptingOrders}
+                  onChange={toggleOrders}
+                  disabled={busy}
+                  label={acceptingOrders ? 'Storefront is Open (Accepting Orders)' : 'Storefront Paused (Resting)'}
                 />
                 <p className="store-status-note">
-                  {form.acceptingOrders
+                  {acceptingOrders
                     ? 'Customers can browse menu, customize cups, and pay online.'
                     : "Ordering paused. Customers see 'Shop is resting, back soon'."}
                 </p>
@@ -1397,59 +1408,36 @@ function ShopSettings({ notify, onPasswordChange }) {
 
               <label>
                 <span className="field-title">Shop Name</span>
-                <input
-                  required
-                  maxLength={60}
-                  value={form.shopName}
-                  onChange={e => setForm({ ...form, shopName: e.target.value })}
-                />
+                <div className="settings-readonly-value">{shopName}</div>
               </label>
+
               <label>
-                <span className="field-title">Tagline</span>
-                <input
-                  maxLength={120}
-                  value={form.tagline}
-                  onChange={e => setForm({ ...form, tagline: e.target.value })}
-                />
+                <span className="field-title">Shop ID / Customer Menu URL</span>
+                <div style={{ marginTop: '8px' }}>
+                  <ShopIdentity id={shopSlug} />
+                </div>
+                <small style={{ color: '#64748b', marginTop: '6px', display: 'block' }}>
+                  This is your shop’s unique identifier for customer orders and printer pairing.
+                </small>
               </label>
-              <label>
-                <span className="field-title">Receipt Header Note (top of thermal bill)</span>
-                <input
-                  maxLength={120}
-                  value={form.receiptHeader}
-                  onChange={e => setForm({ ...form, receiptHeader: e.target.value })}
-                  placeholder="e.g. Welcome to Fresh Me!"
-                />
-              </label>
-              <label>
-                <span className="field-title">Receipt Footer Note (bottom of thermal bill)</span>
-                <input
-                  maxLength={120}
-                  value={form.receiptFooter}
-                  onChange={e => setForm({ ...form, receiptFooter: e.target.value })}
-                  placeholder="Thank you! Visit again!"
-                />
-              </label>
-              <Toggle checked={form.prepCopy} onChange={v=>setForm({...form,prepCopy:v})} label="Print a preparation copy" disabled={busy}/>
-              <label><span className="field-title">Printer batch size</span><input type="number" min={1} max={20} required value={form.batchSize} onChange={e=>setForm({...form,batchSize:Number(e.target.value)})}/></label>
-              <button className="primary" disabled={busy}>
-                <span>Save Settings</span>
-                <Check size={17} />
-              </button>
-            </form>
+            </div>
           </section>
 
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <h2>Security & Password</h2>
-                <p>Update administrator credentials</p>
+                <h2>Change Password</h2>
+                <p>Update administrator login credentials for this counter</p>
               </div>
             </div>
             <form className="settings-form" onSubmit={password}>
               <p className="panel-subtitle">
-                Use at least 12 characters. Updating your password signs out your account on all devices.
+                Use at least 12 characters. Updating your password will sign out your account on all devices.
               </p>
+              <label>
+                <span className="field-title">Account Email</span>
+                <div className="settings-readonly-value">{user?.email || 'Counter Admin'}</div>
+              </label>
               <label>
                 <span className="field-title">Current Password</span>
                 <input
@@ -1458,6 +1446,7 @@ function ShopSettings({ notify, onPasswordChange }) {
                   autoComplete="current-password"
                   value={currentPassword}
                   onChange={e => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
                 />
               </label>
               <label>
@@ -1470,10 +1459,12 @@ function ShopSettings({ notify, onPasswordChange }) {
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
+                  placeholder="At least 12 characters"
                 />
               </label>
-              <button className="secondary" disabled={busy}>
-                Update Password
+              <button className="primary" disabled={busy || !currentPassword || !newPassword} style={{ width: 'fit-content' }}>
+                <span>Update Password</span>
+                <Check size={16} />
               </button>
             </form>
           </section>

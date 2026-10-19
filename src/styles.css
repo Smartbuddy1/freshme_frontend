@@ -2763,8 +2763,22 @@ button svg, a svg { flex-shrink: 0; }
 /* --- Settings Grid & Forms --- */
 .settings-grid {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
+}
+.settings-grid.single-col {
+  grid-template-columns: 1fr 1fr;
+  max-width: 1100px;
+}
+.settings-readonly-value {
+  padding: 11px 15px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0b2545;
+  user-select: text;
 }
 .settings-grid .panel {
   margin-top: 0;
