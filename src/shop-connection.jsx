@@ -6,7 +6,9 @@ export function ShopIdentity({id}){
   const [message,setMessage]=useState('');
   useEffect(()=>{if(!message)return;const timer=setTimeout(()=>setMessage(''),4000);return()=>clearTimeout(timer);},[message]);
   if(!id)return null;
-  return <div className="shop-identity"><Link to={menuPath(id)} target="_blank" rel="noreferrer"><code>/fresheme/{id}</code></Link><button type="button" disabled={!id} onClick={async()=>{try{await navigator.clipboard.writeText(id);setMessage('Shop ID copied');}catch{setMessage('Select and copy the Shop ID above');}}}>Copy ID</button>{message&&<small role="status">{message}</small>}</div>;
+  const isSubpath = typeof window !== 'undefined' && (window.location.pathname === '/freshme' || window.location.pathname.startsWith('/freshme/'));
+  const displayUrl = `${isSubpath ? '/freshme' : ''}/${id}`;
+  return <div className="shop-identity"><Link to={menuPath(id)} target="_blank" rel="noreferrer"><code>{displayUrl}</code></Link><button type="button" disabled={!id} onClick={async()=>{try{await navigator.clipboard.writeText(id);setMessage('Shop ID copied');}catch{setMessage('Select and copy the Shop ID above');}}}>Copy ID</button>{message&&<small role="status">{message}</small>}</div>;
 }
 export function PrinterConnection({shop}){
   const [now,setNow]=useState(Date.now());

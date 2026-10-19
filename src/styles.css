@@ -2108,6 +2108,124 @@ button svg, a svg { flex-shrink: 0; }
   color: #dc2626;
   border: 1px solid #fecaca;
 }
+.stat-qr {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.stat-qr .stat-icon-box {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+.stat-qr:hover {
+  border-color: #16a34a;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.12);
+}
+.stat-qr-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+.stat-mini-qr {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.stat-qr-headline {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+  line-height: 1.25;
+}
+.stat-qr-link-hint {
+  color: #16a34a !important;
+  font-weight: 600;
+  margin-top: 2px;
+  display: block;
+}
+.clickable-stat {
+  user-select: none;
+}
+.clickable-stat:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+}
+
+/* --- Customer QR Modal --- */
+.shop-qr-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 8px 4px 16px;
+}
+.shop-qr-instructions {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+  max-width: 420px;
+  line-height: 1.5;
+}
+.shop-qr-canvas-wrap {
+  padding: 18px;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  display: inline-block;
+}
+.shop-qr-canvas-wrap canvas {
+  display: block;
+  border-radius: 4px;
+}
+.shop-qr-url-box {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+.shop-qr-url-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #334155;
+  font-family: monospace;
+}
+.shop-qr-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 4px;
+}
+.shop-qr-actions .secondary-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.shop-qr-actions .secondary-link-btn:hover {
+  background: #e2e8f0;
+}
 .stat-value {
   font-size: 28px;
   font-weight: 800;

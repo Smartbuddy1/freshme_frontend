@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   CircleDollarSign,
+  Copy,
   ExternalLink,
   Download,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   Pencil,
   Plus,
   Printer,
+  QrCode,
   ReceiptText,
   RefreshCw,
   Settings as SettingsIcon,
@@ -27,6 +29,7 @@ import {
   Sparkles,
   Store
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import {MobileNavigation} from './mobile-navigation.jsx';
 import heroCupsImg from './assets/hero-cups.jpg';
 import { api, money, today, dateTime, storageGet, storageSet, formatImageUrl, downloadPayments, setAdminShopId } from './api.js';
@@ -330,19 +333,18 @@ export default function Admin() {
         <div className="admin-top-bar">
           <div className="admin-shop-context">
             <strong>{user.shop?.name}</strong>
-            <ShopIdentity id={user.shop?.slug}/>
           </div>
         </div>
         <ErrorNotice message={error} />
         <Routes>
-          <Route index element={<Dashboard {...common} />} />
+          <Route index element={<Dashboard {...common} user={user} />} />
           <Route path="products" element={<Products {...common} />} />
           <Route path="orders" element={<Orders {...common} />} />
           <Route path="payments" element={<Payments />} />
           <Route path="settings" element={<ShopSettings {...common} user={user} onPasswordChange={() => setUser(null)} />} />
           <Route path="reports" element={<Reports />} />
           <Route path="account" element={<Navigate to={adminPath("/admin/settings")} replace />} />
-          <Route path="*" element={<Dashboard {...common} />} />
+          <Route path="*" element={<Dashboard {...common} user={user} />} />
         </Routes>
       </main>
 
@@ -472,10 +474,101 @@ function OrderTable({ orders, reload, notify, highlighted = new Set() }) {
   );
 }
 
-function Dashboard({ notify }) {
+function CustomerQRModal({ shopSlug, shopName, close }) {
+  const canvasRef = useRef(null);
+  const [copied, setCopied] = useState(false);
+  const [ready, setReady] = useState(false);
+  const isSubpath = typeof window !== 'undefined' && (window.location.pathname === '/freshme' || window.location.pathname.startsWith('/freshme/'));
+  const basePath = isSubpath ? '/freshme' : '';
+  const url = typeof window !== 'undefined' && shopSlug
+    ? `${window.location.origin}${basePath}${menuPath(shopSlug)}`
+    : '';
+
+  useEffect(() => {
+    let active = true;
+    if (canvasRef.current && url) {
+      QRCode.toCanvas(canvasRef.current, url, {
+        width: 260,
+        margin: 3,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#0b2545', light: '#ffffff' }
+      })
+        .then(() => { if (active) setReady(true); })
+        .catch(() => {});
+    }
+    return () => { active = false; };
+  }, [url]);
+
+  function download() {
+    if (!canvasRef.current) return;
+    const link = document.createElement('a');
+    link.download = `fresh-me-${shopSlug || 'menu'}-qr.png`;
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  }
+
+  function copyUrl() {
+    if (!url) return;
+    navigator.clipboard?.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Modal title={`Customer Ordering QR · ${shopName || 'Counter'}`} close={close}>
+      <div className="shop-qr-modal-body">
+        <p className="shop-qr-instructions">
+          Display this QR code at your shop counter. Customers scan it with any smartphone camera to open your live menu and place orders.
+        </p>
+        <div className="shop-qr-canvas-wrap">
+          <canvas ref={canvasRef} role="img" aria-label={`Ordering QR for ${shopName}`} />
+        </div>
+        <div className="shop-qr-url-box">
+          <input type="text" readOnly value={url} className="shop-qr-url-input" />
+          <button type="button" className="secondary" onClick={copyUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+            <Copy size={15} />
+            <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+          </button>
+        </div>
+        <div className="shop-qr-actions">
+          <button type="button" className="primary" disabled={!ready} onClick={download} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Download size={16} />
+            <span>Download High-Res QR (PNG)</span>
+          </button>
+          <a href={url} target="_blank" rel="noreferrer" className="secondary-link-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <ExternalLink size={15} />
+            <span>Open Menu</span>
+          </a>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function Dashboard({ notify, user }) {
   const { data, error, reload } = useData('/admin/dashboard', 5000);
   const [testBusy, setTestBusy] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [showQR, setShowQR] = useState(false);
+  const miniCanvasRef = useRef(null);
+
+  const shopSlug = data?.shopSlug || user?.shop?.slug;
+  const shopName = data?.shopName || user?.shop?.name || 'Fresh Me';
+  const isSubpath = typeof window !== 'undefined' && (window.location.pathname === '/freshme' || window.location.pathname.startsWith('/freshme/'));
+  const basePath = isSubpath ? '/freshme' : '';
+  const menuUrl = typeof window !== 'undefined' && shopSlug
+    ? `${window.location.origin}${basePath}${menuPath(shopSlug)}`
+    : '';
+
+  useEffect(() => {
+    if (miniCanvasRef.current && menuUrl) {
+      QRCode.toCanvas(miniCanvasRef.current, menuUrl, {
+        width: 44,
+        margin: 1,
+        color: { dark: '#0b2545', light: '#ffffff' }
+      }).catch(() => {});
+    }
+  }, [menuUrl, data]);
 
   async function testPrint() {
     setTestBusy(true);
@@ -548,15 +641,27 @@ function Dashboard({ notify }) {
               <small className="stat-note">Waiting at the counter</small>
             </div>
 
-            <div className="stat-card stat-failed">
+            <div
+              className="stat-card stat-qr clickable-stat"
+              onClick={() => setShowQR(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setShowQR(true)}
+              title="Click to view and download your customer ordering QR code"
+            >
               <div className="stat-header">
-                <span className="stat-label">Failed prints</span>
+                <span className="stat-label">Customer QR</span>
                 <div className="stat-icon-box">
-                  <ReceiptText size={18} />
+                  <QrCode size={18} />
                 </div>
               </div>
-              <strong className="stat-value">{data.failedPrints}</strong>
-              <small className="stat-note">{data.failedPrints === 0 ? 'Everything running smoothly' : 'Need your attention'}</small>
+              <div className="stat-qr-preview-row">
+                <canvas ref={miniCanvasRef} className="stat-mini-qr" width={44} height={44} />
+                <div>
+                  <strong className="stat-qr-headline">Scan to order</strong>
+                  <small className="stat-note stat-qr-link-hint">View & print QR →</small>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -599,6 +704,14 @@ function Dashboard({ notify }) {
             <OrderTable orders={data.orders} reload={reload} notify={notify} />
           </section>
         </>
+      )}
+
+      {showQR && (
+        <CustomerQRModal
+          shopSlug={shopSlug}
+          shopName={shopName}
+          close={() => setShowQR(false)}
+        />
       )}
     </>
   );

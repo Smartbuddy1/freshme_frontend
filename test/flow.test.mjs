@@ -50,8 +50,8 @@ test('orderPath formats canonical route', () => {
   assert.equal(orderPath('order-id-123'), '/order/order-id-123');
 });
 test('shop routes, request attribution and carts stay isolated with legacy default compatibility',()=>{
-  assert.equal(menuPath('rahul-juice'),'/fresheme/rahul-juice');
-  assert.equal(orderPath('abc','rahul-juice'),'/fresheme/rahul-juice/order/abc');
+  assert.equal(menuPath('rahul-juice'),'/rahul-juice');
+  assert.equal(orderPath('abc','rahul-juice'),'/rahul-juice/order/abc');
   assert.equal(shopRequestPath('/orders/abc','rahul-juice'),'/orders/abc?shopSlug=rahul-juice');
   assert.equal(shopRequestPath('/menu?x=1','rahul-juice'),'/menu?x=1&shopSlug=rahul-juice');
   assert.notEqual(shopStorageKey('rahul-juice','cart'),shopStorageKey('other-shop','cart'));

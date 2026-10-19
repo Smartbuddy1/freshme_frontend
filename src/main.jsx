@@ -38,11 +38,15 @@ createRoot(document.getElementById('root')).render(
       <Suspense fallback={<div className="page-loading">Getting things fresh…</div>}>
         <Routes>
           <Route path="/" element={<Menu />} />
-          <Route path="/fresheme/:shopSlug" element={<ShopMenu />} />
-          <Route path="/fresheme/:shopSlug/order/:id" element={<ShopToken />} />
+          <Route path="/admin/*" element={<Admin />} />
           <Route path="/super-admin/*" element={<SuperAdmin />} />
           <Route path="/order/:id" element={<Token />} />
-          <Route path="/admin/*" element={<Admin />} />
+          <Route path="/shop/:shopSlug" element={<ShopMenu />} />
+          <Route path="/shop/:shopSlug/order/:id" element={<ShopToken />} />
+          <Route path="/fresheme/:shopSlug" element={<ShopMenu />} />
+          <Route path="/fresheme/:shopSlug/order/:id" element={<ShopToken />} />
+          <Route path="/:shopSlug" element={<ShopMenu />} />
+          <Route path="/:shopSlug/order/:id" element={<ShopToken />} />
           <Route path="*" element={<Empty title="This flavor is off the menu"><a href="/freshme">Back to Fresh Me</a></Empty>} />
         </Routes>
       </Suspense>

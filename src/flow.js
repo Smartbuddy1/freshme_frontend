@@ -8,7 +8,7 @@ export const shopStorageKey = (slug,key) => !slug || slug === 'fresh-me' ? key :
 export const shopRequestPath = (path,slug) => slug ? path+(path.includes('?')?'&':'?')+'shopSlug='+encodeURIComponent(slug) : path;
 export const cartTotal = cart => cart.reduce((total,item)=>total+item.qty*item.price,0);
 export const orderPath = (id,slug) => `${slug ? menuPath(slug) : ""}/order/${encodeURIComponent(id)}`;
-export const menuPath = slug => slug ? '/fresheme/'+encodeURIComponent(slug) : '/';
+export const menuPath = slug => slug ? '/'+encodeURIComponent(slug) : '/';
 export function changeSize(cart,index,size){
   const next=cart.map((item,i)=>i===index?{...item,size:size.label,price:size.price}:item);const merged=[];
   for(const item of next){const existing=merged.find(x=>x.productId===item.productId&&x.size===item.size);if(existing)existing.qty=Math.min(20,existing.qty+item.qty);else merged.push({...item});}
