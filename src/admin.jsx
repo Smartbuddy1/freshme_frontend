@@ -445,15 +445,6 @@ function OrderTable({ orders, reload, notify, highlighted = new Set() }) {
                   <td className="order-action-cell">
                     <div className="row-actions">
                       <button
-                        className="btn-action-serve"
-                        disabled={!!busy || o.status !== 'PAID'}
-                        onClick={() => action(o, 'serve')}
-                        title="Mark order as served to customer"
-                      >
-                        <Check size={14} />
-                        <span>Mark served</span>
-                      </button>
-                      <button
                         className="btn-action-reprint"
                         disabled={!!busy || !['PAID', 'SERVED'].includes(o.status)}
                         onClick={() => action(o, 'reprint')}

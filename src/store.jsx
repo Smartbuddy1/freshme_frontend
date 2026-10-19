@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, QrCode, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
 import { api, money, dateTime, loadCheckout, storageGet as readStorage, storageSet as writeStorage, formatImageUrl } from './api.js';
 import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty, unlockScroll } from './components.jsx';
 import logoImg from './assets/logo.png';
@@ -147,6 +147,8 @@ function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
 }
 export function Menu() {
   const {shopSlug}=useParams();
+  const isDefaultRoot = !shopSlug;
+  const [showCounterModal, setShowCounterModal] = useState(false);
   const storageGet=(key,fallback,session)=>readStorage(shopStorageKey(shopSlug,key),fallback,session);
   const storageSet=(key,value,session)=>writeStorage(shopStorageKey(shopSlug,key),value,session);
   const orderPath=id=>makeOrderPath(id,shopSlug), menuPath=()=>makeMenuPath(shopSlug);
@@ -211,6 +213,10 @@ export function Menu() {
   function invalidate() { checkout.current = null; storageSet('freshme-checkout',null,true); setPaymentState(''); }
   function changeCart(next) { invalidate(); setCart(next); }
   function add(p) {
+    if (isDefaultRoot) {
+      setShowCounterModal(true);
+      return;
+    }
     const size = p.sizes[0]; const existing = cart.find(i => i.productId === p._id && i.size === size.label);
     if (existing?.qty >= 20) return;
     changeCart(existing ? cart.map(i => i === existing ? { ...i, qty: i.qty + 1 } : i) : [...cart, { productId: p._id, name: p.name, color: p.flavorColor, size: size.label, price: size.price, qty: 1 }]);
@@ -232,7 +238,12 @@ export function Menu() {
     changeCart(resizedCart(cart,index,size));
   }
   async function pay(e) {
-    e?.preventDefault(); if (busyRef.current || !cart.length) return;
+    e?.preventDefault();
+    if (isDefaultRoot) {
+      setShowCounterModal(true);
+      return;
+    }
+    if (busyRef.current || !cart.length) return;
     busyRef.current = true; setBusy(true); setPaymentState(''); setError('');
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !validPhone(trimmedPhone)) {
@@ -339,6 +350,19 @@ export function Menu() {
       </button>
     </div>
   )}<main className="store-main">
+    {isDefaultRoot && (
+      <div className="store-counter-notice" role="alert">
+        <div className="notice-icon-circle">
+          <QrCode size={22} />
+        </div>
+        <div className="notice-content">
+          <strong>Viewing Online Menu</strong>
+          <p>
+            To place an order and collect your fresh slush, please visit your nearest <b>Fresh Me</b> shop and scan the QR code on the counter!
+          </p>
+        </div>
+      </div>
+    )}
     <section className="hero">
       <div className="hero-copy">
         <div className="eyebrow"><span/> SIP AND CHILL</div>
@@ -352,10 +376,10 @@ export function Menu() {
       </div>
     </section>
     <section id="flavors" className="menu-section" aria-labelledby="flavors-title"><h2 id="flavors-title" className="sr-only">Choose a flavor</h2><nav className="category-tabs" aria-label="Flavor categories">{categories.map(c => <button key={c} className={category === c ? 'selected' : ''} aria-pressed={category === c} onClick={() => setCategory(c)}>{c === 'All flavors' && <Snowflake size={16}/>} {c}</button>)}</nav>
-    {!open && <ErrorNotice message={error} retry={refresh}/>}{!menu ? <Skeleton/> : <div className="product-grid">{menu.products.filter(p => category === 'All flavors' || p.category === category).map((p, index) => { const pQty = cart.filter(i => i.productId === p._id).reduce((sum, i) => sum + i.qty, 0); return <article key={p._id} className={`product-slot ${!p.available ? 'sold-out' : ''} ${drop === p._id ? 'dropping' : ''}`} style={{ '--flavor': p.flavorColor, '--i': index }}><div className="slot-art">{!p.available && <span className="sold-ribbon">SOLD OUT</span>}{p.imageUrl ? <img src={formatImageUrl(p.imageUrl)} alt={`${p.name} slush`} loading="lazy" width="180" height="190"/> : <Cup color={p.flavorColor}/>}<div className="slot-shelf"/></div><div className="slot-info"><h3>{p.name}</h3><p>{descriptions[p.name] || 'A fresh little burst of happiness.'}</p><div className="slot-bottom"><span>from <b>{money(Math.min(...p.sizes.map(s => s.price)))}</b></span>{pQty > 0 ? <div className="card-stepper" role="group" aria-label={`Quantity for ${p.name}`}><button type="button" disabled={busy} onClick={() => remove(p)} aria-label={`Remove one ${p.name}`} className="stepper-btn minus">{pQty === 1 ? <Trash2 size={14}/> : <Minus size={15}/>}</button><span className="stepper-qty">{pQty}</span><button type="button" disabled={busy || pQty >= 20} onClick={() => add(p)} aria-label={`Add one ${p.name}`} className="stepper-btn plus"><Plus size={15}/></button></div> : <button disabled={!p.available || busy} onClick={() => add(p)} aria-label={`Add ${p.name}`} className="add-button">{drop === p._id ? <Check size={18}/> : <Plus size={18}/>}</button>}</div></div></article>; })}</div>}{menu?.products.length === 0 && <Empty embedded title="Fresh flavors are on their way">Check back in a little while.</Empty>}</section>
+    {!open && <ErrorNotice message={error} retry={refresh}/>}{!menu ? <Skeleton/> : <div className="product-grid">{menu.products.filter(p => category === 'All flavors' || p.category === category).map((p, index) => { const pQty = cart.filter(i => i.productId === p._id).reduce((sum, i) => sum + i.qty, 0); return <article key={p._id} className={`product-slot ${!p.available ? 'sold-out' : ''} ${drop === p._id ? 'dropping' : ''}`} style={{ '--flavor': p.flavorColor, '--i': index }}><div className="slot-art">{!p.available && <span className="sold-ribbon">SOLD OUT</span>}{p.imageUrl ? <img src={formatImageUrl(p.imageUrl)} alt={`${p.name} slush`} loading="lazy" width="180" height="190"/> : <Cup color={p.flavorColor}/>}<div className="slot-shelf"/></div><div className="slot-info"><h3>{p.name}</h3><p>{descriptions[p.name] || 'A fresh little burst of happiness.'}</p><div className="slot-bottom"><span>from <b>{money(Math.min(...p.sizes.map(s => s.price)))}</b></span>{pQty > 0 ? <div className="card-stepper" role="group" aria-label={`Quantity for ${p.name}`}><button type="button" disabled={busy} onClick={() => remove(p)} aria-label={`Remove one ${p.name}`} className="stepper-btn minus">{pQty === 1 ? <Trash2 size={14}/> : <Minus size={15}/>}</button><span className="stepper-qty">{pQty}</span><button type="button" disabled={busy || pQty >= 20} onClick={() => add(p)} aria-label={`Add one ${p.name}`} className="stepper-btn plus"><Plus size={15}/></button></div> : isDefaultRoot ? <button type="button" onClick={() => setShowCounterModal(true)} className="scan-qr-order-btn" title="Scan counter QR code to order"><QrCode size={13}/><span>Order at counter</span></button> : <button disabled={!p.available || busy} onClick={() => add(p)} aria-label={`Add ${p.name}`} className="add-button">{drop === p._id ? <Check size={18}/> : <Plus size={18}/>}</button>}</div></div></article>; })}</div>}{menu?.products.length === 0 && <Empty embedded title="Fresh flavors are on their way">Check back in a little while.</Empty>}</section>
     <div className="goodness-note"><Snowflake/><span>Good vibes. Great slush. <b>That's Fresh Me.</b></span><Snowflake/></div>
   </main>{toast && <div className="toast" role="status"><Check size={17}/>{toast}</div>}
-  {!open && !busy && count > 0 && <section className="cart-dock" aria-label="Shopping tray"><div className="cart-display"><div className="cart-count"><ShoppingBag size={21}/><span>{count}</span></div><div className="cart-total"><span>{`${count} ${count === 1 ? 'drink' : 'drinks'} in your tray`}</span><b className="digital">{money(total)}</b></div><button className="primary cart-pay" onClick={() => setOpen(true)}>Pay <ArrowRight size={18}/></button></div><span className="dock-caption"><ShieldCheck size={12}/> Safe payments. Happy sipping.</span></section>}
+  {!open && !busy && count > 0 && <section className="cart-dock" aria-label="Shopping tray"><div className="cart-display"><div className="cart-count"><ShoppingBag size={21}/><span>{count}</span></div><div className="cart-total"><span>{`${count} ${count === 1 ? 'drink' : 'drinks'} in your tray`}</span><b className="digital">{money(total)}</b></div><button className="primary cart-pay" onClick={() => isDefaultRoot ? setShowCounterModal(true) : setOpen(true)}>Pay <ArrowRight size={18}/></button></div><span className="dock-caption"><ShieldCheck size={12}/> Safe payments. Happy sipping.</span></section>}
   {open && <Modal title="Your happy little tray" close={() => !busy && setOpen(false)} className="cart-sheet"><form onSubmit={pay} className="cart-form"><div className="cart-items"><div className="checkout-contact"><label>Mobile number (optional)<input name="phone" type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} value={phone} onChange={e=>{setPhone(e.target.value);invalidate();}} placeholder="10-digit mobile number"/></label><label>Name (optional)<input name="customerName" autoComplete="name" maxLength={80} value={customerName} onChange={e=>{setCustomerName(e.target.value);invalidate();}} placeholder="e.g. Rahul"/></label></div>{cart.map((i, index) => <div className="cart-item" key={`${i.productId}-${i.size}`}><Cup color={i.color} className="cart-cup"/><div className="cart-item-main"><div className="cart-item-top"><h3>{i.name}</h3><button type="button" className="icon-button" aria-label={`Remove ${i.name}`} disabled={busy} onClick={() => changeCart(cart.filter((_, j) => j !== index))}><Trash2 size={17}/></button></div><div className="size-chips">{menu.products.find(p => p._id === i.productId)?.sizes.map(s => <button type="button" key={s.label} disabled={busy} className={s.label === i.size ? 'active' : ''} onClick={() => changeSize(index, s.label)}>{s.label}</button>)}</div><div className="qty-row"><div className="stepper"><button type="button" disabled={busy || i.qty <= 1} aria-label={`Decrease ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty - 1 } : x))}><Minus size={15}/></button><b>{i.qty}</b><button type="button" disabled={busy || i.qty >= 20} aria-label={`Increase ${i.name}`} onClick={() => changeCart(cart.map((x,j) => j === index ? { ...x, qty: x.qty + 1 } : x))}><Plus size={15}/></button></div><strong>{money(i.qty * i.price)}</strong></div></div></div>)}{!cart.length && <p className="empty-cart">Your tray is waiting for a little happiness.</p>}{paymentState && <div className="notice" role="status"><strong>{paymentState === 'cancelled' ? 'Checkout cancelled' : "Payment didn't go through"}</strong><p>{paymentState === 'cancelled' ? 'Your tray is saved. Ready when you are.' : 'You can retry safely with the same checkout. If money was deducted, check your token before paying again.'}</p>{storageGet('freshme-last-order') && <Link to={orderPath(storageGet('freshme-last-order'))}>Check payment status</Link>}</div>}<ErrorNotice message={error}/></div><div className="checkout-footer"><div className="checkout-total"><span>Total happiness</span><strong>{money(total)}</strong></div><button type="submit" className="primary full" disabled={busy || !cart.length}><CreditCard size={18}/>{busy ? 'Opening secure checkout…' : `${paymentState ? 'Retry · ' : 'Pay '}${money(total)}`}<ArrowRight size={18}/></button><p className="secure-note"><ShieldCheck size={14}/> {menu?.settings?.isDemo ? 'Local Test Mode · Simulated Checkout' : 'Secure checkout by Razorpay'}</p></div></form></Modal>}
   {demoOrder && <PaymentPortal
     order={demoOrder}
@@ -399,6 +423,22 @@ export function Menu() {
       setOpen(true);
     }}
   />}
+  {showCounterModal && (
+    <Modal title="Order at Counter" close={() => setShowCounterModal(false)}>
+      <div className="order-notice-modal-body">
+        <div className="notice-modal-icon">
+          <QrCode size={36} />
+        </div>
+        <h3>Scan Shop QR to Order</h3>
+        <p>
+          Each Fresh Me cup is poured fresh at our counter! To customize your drink, make payment, and receive your live token, please visit your nearest shop counter and scan the QR code displayed there.
+        </p>
+        <button type="button" className="primary" onClick={() => setShowCounterModal(false)}>
+          Got it, browse flavors
+        </button>
+      </div>
+    </Modal>
+  )}
   </div>;
 }
 export function Token() {
