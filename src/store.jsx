@@ -350,19 +350,6 @@ export function Menu() {
       </button>
     </div>
   )}<main className="store-main">
-    {isDefaultRoot && (
-      <div className="store-counter-notice" role="alert">
-        <div className="notice-icon-circle">
-          <QrCode size={22} />
-        </div>
-        <div className="notice-content">
-          <strong>Viewing Online Menu</strong>
-          <p>
-            To place an order and collect your fresh slush, please visit your nearest <b>Fresh Me</b> shop and scan the QR code on the counter!
-          </p>
-        </div>
-      </div>
-    )}
     <section className="hero">
       <div className="hero-copy">
         <div className="eyebrow"><span/> SIP AND CHILL</div>
