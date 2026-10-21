@@ -1451,6 +1451,7 @@ button svg, a svg { flex-shrink: 0; }
 }
 
 .ticket {
+  font-family: 'Cambria', Georgia, serif;
   background: white;
   border-radius: 20px;
   box-shadow: 0 8px 30px rgba(22, 58, 88, 0.08);
