@@ -1459,8 +1459,8 @@ button svg, a svg { flex-shrink: 0; }
   border: 1px solid #dce8ed;
   animation: ticketDrop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.ticket-top { padding: 26px 22px; text-align: center; }
-.ticket-top .brand { display: inline-flex; justify-content: center; margin-bottom: 8px; }
+.ticket-top { padding: 16px 18px 12px; text-align: center; }
+.ticket-top .brand { display: inline-flex; justify-content: center; margin-bottom: 6px; }
 .ticket-top .brand-logo-img { height: 75px; max-width: 220px; }
 .ticket-top > span:not(.ticket-date) {
   font-size: 11px;
@@ -1469,14 +1469,14 @@ button svg, a svg { flex-shrink: 0; }
   gap: 6px;
   align-items: center;
   justify-content: center;
-  margin: 18px 0;
+  margin: 10px 0;
   color: #7891a1;
   font-weight: 700;
 }
 .ticket-top > p {
   font-size: 12px;
   letter-spacing: 1.8px;
-  margin-top: 18px;
+  margin-top: 10px;
   font-weight: 700;
   color: #678196;
 }
@@ -1490,16 +1490,16 @@ button svg, a svg { flex-shrink: 0; }
   display: inline-block;
   transform: scaleY(1.35);
   transform-origin: center;
-  margin: 12px 0;
+  margin: 6px 0;
 }
 .pending-number { font-size: 26px; letter-spacing: 0; line-height: 2.2; }
 .ticket-top > strong { font-size: 14px; display: block; margin-top: 4px; }
-.ticket-date { display: block; color: #7590a0; font-size: 11.5px; margin-top: 10px; }
+.ticket-date { display: block; color: #7590a0; font-size: 11.5px; margin-top: 6px; }
 .ticket-tear {
   height: 1px;
   border-top: 2px dashed #d9e7ed;
   position: relative;
-  margin: 0 16px;
+  margin: 0;
 }
 .ticket-tear:before, .ticket-tear:after {
   content: '';
@@ -1510,23 +1510,23 @@ button svg, a svg { flex-shrink: 0; }
   background: #f0faff;
   border-radius: 50%;
 }
-.ticket-tear:before { left: -28px; }
-.ticket-tear:after { right: -28px; }
-.ticket-summary { padding: 20px 24px; }
+.ticket-tear:before { left: -14px; }
+.ticket-tear:after { right: -14px; }
+.ticket-summary { padding: 14px 18px; }
 .ticket-summary > div {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 14px;
-  padding: 8px 0;
+  padding: 4px 0;
   gap: 12px;
 }
 .ticket-summary span > b { margin-right: 7px; color: var(--berry); }
-.ticket-summary small { display: block; color: #7490a1; font-size: 12px; margin-top: 3px; }
+.ticket-summary small { display: block; color: #7490a1; font-size: 12px; margin-top: 2px; }
 .ticket-total {
   border-top: 1px solid #e4edf2;
-  margin-top: 12px;
-  padding-top: 16px !important;
+  margin-top: 8px;
+  padding-top: 10px !important;
 }
 .ticket-total > strong { font-size: 24px; }
 .ticket-total small { font-size: 10px; letter-spacing: 1px; }
