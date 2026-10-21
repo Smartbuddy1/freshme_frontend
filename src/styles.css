@@ -1461,7 +1461,7 @@ button svg, a svg { flex-shrink: 0; }
 }
 .ticket-top { padding: 26px 22px; text-align: center; }
 .ticket-top .brand { display: inline-flex; justify-content: center; margin-bottom: 8px; }
-.ticket-top .brand-logo-img { height: 60px; max-width: 185px; }
+.ticket-top .brand-logo-img { height: 75px; max-width: 220px; }
 .ticket-top > span:not(.ticket-date) {
   font-size: 11px;
   letter-spacing: 1.6px;
@@ -1485,6 +1485,12 @@ button svg, a svg { flex-shrink: 0; }
   line-height: 1.15;
   color: var(--berry);
   letter-spacing: -4px;
+}
+.ticket .token-number {
+  display: inline-block;
+  transform: scaleY(1.35);
+  transform-origin: center;
+  margin: 12px 0;
 }
 .pending-number { font-size: 26px; letter-spacing: 0; line-height: 2.2; }
 .ticket-top > strong { font-size: 14px; display: block; margin-top: 4px; }
