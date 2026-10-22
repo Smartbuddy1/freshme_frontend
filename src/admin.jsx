@@ -22,7 +22,6 @@ import {
   Settings as SettingsIcon,
   ShoppingBag,
   Trash2,
-  Volume2,
   X,
   TrendingUp,
   Clock,
@@ -709,8 +708,6 @@ function Orders({ notify }) {
   const [date, setDate] = useState(today());
   const [token, setToken] = useState('');
   const [page, setPage] = useState(1);
-  const [beep, setBeep] = useState(false);
-  const audio = useRef(null);
   const seen = useRef(null);
   const [highlighted, setHighlighted] = useState(new Set());
 
@@ -727,36 +724,8 @@ function Orders({ notify }) {
     const paid = data.orders.filter(o => ['PAID', 'SERVED'].includes(o.status)).map(o => o._id);
     const fresh = new Set(seen.current ? paid.filter(id => !seen.current.has(id)) : []);
     setHighlighted(fresh);
-    if (fresh.size && beep && audio.current) {
-      const ctx = audio.current;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.06, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.25);
-    }
     seen.current = new Set([...(seen.current || []), ...paid]);
   }, [data]);
-
-  useEffect(() => () => {
-    audio.current?.close();
-  }, []);
-
-  function toggleBeep() {
-    if (!beep) {
-      try {
-        audio.current ||= new (window.AudioContext || window.webkitAudioContext)();
-        audio.current.resume();
-      } catch {
-        return;
-      }
-    }
-    setBeep(!beep);
-  }
 
   return (
     <>
@@ -810,16 +779,6 @@ function Orders({ notify }) {
               }}
             />
           </label>
-
-          <button
-            type="button"
-            className={`beep-toggle-btn ${beep ? 'active' : ''}`}
-            onClick={toggleBeep}
-            title={beep ? 'Disable new order chime' : 'Enable new order chime'}
-          >
-            <Volume2 size={16} />
-            <span>{beep ? 'Sound alert ON' : 'Sound alert OFF'}</span>
-          </button>
         </div>
       </div>
 
