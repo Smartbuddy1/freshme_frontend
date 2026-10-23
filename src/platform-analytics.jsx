@@ -7,30 +7,17 @@ const dateLabel=date=>new Date(date+'T00:00:00Z').toLocaleDateString('en-IN',{da
 function AreaChart({rows,metric,title,color}){
   const [hovered,setHovered]=useState(null);
   const id=useId();
-  const W=560,H=140,PL=8,PR=8,PT=8,PB=4;
+  const W=560,H=140,PL=8,PR=8,PT=8,PB=16;
   const IW=W-PL-PR,IH=H-PT-PB;
   const n=rows.length;
   const max=Math.max(1,...rows.map(r=>r[metric]));
-  const x=i=>PL+i*IW/Math.max(1,n-1);
-  const y=v=>PT+IH-(v/max)*IH;
+  const barW=n>1?Math.max(4,IW/n*0.7):IW*0.3;
+  const bx=i=>PL+i*(IW/Math.max(1,n-1));
+  const barH=v=>(v/max)*IH;
   const idx=Math.max(0,Math.min(hovered??n-1,n-1));
   const point=rows[idx];
   const fmt=v=>metric==='revenue'?money(v):v.toLocaleString('en-IN');
-
-  /* smooth bezier path */
-  const pts=rows.map((r,i)=>[x(i),y(r[metric])]);
-  let path='';
-  if(pts.length===1){
-    path=`M${pts[0][0]},${pts[0][1]}`;
-  } else {
-    path=`M${pts[0][0]},${pts[0][1]}`;
-    for(let i=1;i<pts.length;i++){
-      const [x0,y0]=pts[i-1],[x1,y1]=pts[i];
-      const cpx=(x0+x1)/2;
-      path+=` C${cpx},${y0} ${cpx},${y1} ${x1},${y1}`;
-    }
-  }
-  const areaPath=n>0?`${path} L${x(n-1)},${PT+IH} L${x(0)},${PT+IH} Z`:'';
+  const baseline=PT+IH;
 
   return(
     <section className="ac-card" aria-labelledby={id}>
@@ -42,47 +29,43 @@ function AreaChart({rows,metric,title,color}){
         <strong className="ac-value" style={{color}}>{fmt(point?.[metric]||0)}</strong>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="ac-svg" role="img" aria-label={title}>
-        <defs>
-          <linearGradient id={`g${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.18"/>
-            <stop offset="100%" stopColor={color} stopOpacity="0.0"/>
-          </linearGradient>
-        </defs>
         {/* grid lines */}
         {[0,0.5,1].map(r=>(
-          <line key={r} x1={PL} x2={W-PR} y1={y(max*r)} y2={y(max*r)}
+          <line key={r} x1={PL} x2={W-PR} y1={PT+IH-(r*IH)} y2={PT+IH-(r*IH)}
             stroke={r===0?'transparent':'#f0f3f7'} strokeWidth="1"/>
         ))}
-        {/* area fill */}
-        {n>1&&<path d={areaPath} fill={`url(#g${id})`}/>}
-        {/* line */}
-        {n>1&&<path d={path} stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>}
-        {/* single point dot */}
-        {n===1&&<circle cx={x(0)} cy={y(rows[0][metric])} r="4" fill={color}/>}
-        {/* hover crosshair + dot */}
-        {point&&n>1&&(
+        {/* bars */}
+        {rows.map((r,i)=>{
+          const h=Math.max(1,barH(r[metric]));
+          const isHov=i===idx;
+          return(
+            <rect key={r.date}
+              x={bx(i)-barW/2} y={baseline-h}
+              width={barW} height={h}
+              rx="3" ry="3"
+              fill={color}
+              opacity={hovered===null?0.82:isHov?1:0.35}
+              style={{transition:'opacity 0.15s'}}
+            />
+          );
+        })}
+        {/* date labels */}
+        {n>0&&(
           <>
-            <line x1={x(idx)} x2={x(idx)} y1={PT} y2={PT+IH}
-              stroke={color} strokeWidth="1" strokeDasharray="3 3" opacity="0.5"/>
-            <circle cx={x(idx)} cy={y(point[metric])} r="4.5" fill={color} stroke="white" strokeWidth="2"/>
+            <text x={bx(0)} y={H} fill="#94a3b8" fontSize="10" textAnchor="start">{dateLabel(rows[0].date)}</text>
+            <text x={bx(n-1)} y={H} fill="#94a3b8" fontSize="10" textAnchor="end">{dateLabel(rows[n-1].date)}</text>
           </>
         )}
         {/* invisible hover zones */}
         {rows.map((r,i)=>(
-          <rect key={r.date} x={x(i)-IW/Math.max(1,n-1)/2} y={0} width={IW/Math.max(1,n-1)} height={H}
+          <rect key={'h'+r.date} x={bx(i)-IW/Math.max(1,n-1)/2} y={0}
+            width={IW/Math.max(1,n-1)} height={H}
             fill="transparent"
             onPointerEnter={()=>setHovered(i)}
             onPointerLeave={()=>setHovered(null)}>
             <title>{dateLabel(r.date)}: {fmt(r[metric])}</title>
           </rect>
         ))}
-        {/* date labels */}
-        {n>0&&(
-          <>
-            <text x={x(0)} y={H} fill="#94a3b8" fontSize="10" textAnchor="start">{dateLabel(rows[0].date)}</text>
-            <text x={x(n-1)} y={H} fill="#94a3b8" fontSize="10" textAnchor="end">{dateLabel(rows[n-1].date)}</text>
-          </>
-        )}
       </svg>
       {n>1&&<input className="chart-day" type="range" min="0" max={n-1} value={idx}
         aria-label={`${title} day`} aria-valuetext={`${dateLabel(point.date)}: ${fmt(point[metric])}`}
