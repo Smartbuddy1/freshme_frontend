@@ -293,7 +293,11 @@ export function Menu() {
           checkout.current = null;
           storageSet('freshme-checkout', null, true);
           storageSet('freshme-last-order', order.orderId);
-          api('/payments/verify', { method: 'POST', body: verification }).catch(() => {});
+          try {
+            await api('/payments/verify', { method: 'POST', body: verification, keepalive: true });
+          } catch {
+            /* Token page fallback will retry immediately */
+          }
           busyRef.current = false;
           setBusy(false);
           navigate(orderPath(order.orderId), { state: { verification } });
@@ -442,10 +446,10 @@ export function Token() {
     async function poll() {
       try {
         const pending = pendingVerification;
-        if (pending?.orderId === id && Date.now()-lastVerification>=12000) {
+        if (pending?.orderId === id && Date.now()-lastVerification>=2500) {
           lastVerification=Date.now();
           try {
-            const verifyRes = await api('/payments/verify', { method: 'POST', body: pending });
+            const verifyRes = await api('/payments/verify', { method: 'POST', body: pending, keepalive: true });
             storageSet('freshme-verification', null, true);
             pendingVerification=null;
             if (verifyRes && ['PAID', 'SERVED'].includes(verifyRes.status)) {
@@ -479,7 +483,7 @@ export function Token() {
           const isDone = ['PAID', 'SERVED'].includes(currentStatus);
           const isExpired = currentStatus === 'EXPIRED';
           if (!isExpired) {
-            const nextInterval = isDone ? 6000 : (attempts < 15 ? 1200 : 3000);
+            const nextInterval = isDone ? 5000 : (attempts < 15 ? 600 : 2000);
             timer = setTimeout(poll, nextInterval);
           }
         }
