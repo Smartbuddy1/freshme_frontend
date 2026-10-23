@@ -36,6 +36,7 @@ import { Badge, Brand, Cup, ErrorNotice, Modal } from './components.jsx';
 import {ShopIdentity,PrinterConnection} from './shop-connection.jsx';
 import { menuPath } from './flow.js';
 import { Reports } from './admin-extras.jsx';
+import {DailyAnalytics} from './daily-analytics.jsx';
 
 export function Sparkline({ color = '#ec4899', id = '1' }) {
   return (
@@ -527,7 +528,8 @@ function CustomerQRModal({ shopSlug, shopName, close }) {
 }
 
 function Dashboard({ notify, user }) {
-  const { data, error, reload } = useData('/admin/dashboard', 5000);
+  const [days,setDays] = useState('7');
+  const { data, error, reload } = useData('/admin/dashboard?days='+days, 5000);
   const [testBusy, setTestBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [showQR, setShowQR] = useState(false);
@@ -645,6 +647,8 @@ function Dashboard({ notify, user }) {
               </div>
             </div>
           </div>
+
+          <DailyAnalytics analytics={data.analytics} days={days} setDays={setDays} error={error}/>
 
           <div className="printer-panel">
             <div className="printer-info">
