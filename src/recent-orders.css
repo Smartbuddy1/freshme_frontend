@@ -1,0 +1,18 @@
+.daily-analytics-sidebar { display: grid; gap: 14px; min-width: 0; }
+.recent-orders { min-width: 0; padding: 20px 22px 8px; border: 1px solid #eaf0f6; border-radius: 18px; background: #fff; box-shadow: 0 1px 6px #0f172a0a; }
+.recent-orders-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; color: #607b96; }
+.recent-orders-heading h3 { margin: 0; color: #223b56; font: 700 14px/1.4 'DM Sans',sans-serif; }
+.recent-orders-heading p { margin: 3px 0 0; font: 400 11px/1.5 'DM Sans',sans-serif; color: #60758b; }
+.recent-orders-list { list-style: none; padding: 0; margin: 0; }
+.recent-orders-list li { padding: 12px 0; border-top: 1px solid #edf2f7; }
+.recent-order-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; color: #233d58; }
+.recent-order-top strong { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.recent-order-top b { flex-shrink: 0; font-weight: 700; }
+.recent-order-shop { display: block; margin-top: 4px; font-size: 11px; line-height: 1.4; color: #526b85; overflow-wrap: anywhere; }
+.recent-order-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 5px 8px; margin-top: 7px; font-size: 10px; line-height: 1.4; }
+.recent-order-status { padding: 3px 7px; border-radius: 6px; background: #f0f4f8; color: #526176; }
+.recent-order-status--paid,.recent-order-status--served { background: #edf8f2; color: #246344; }
+.recent-order-status--pending_payment { background: #fff7e6; color: #85580c; }
+.recent-order-bottom time { color: #60758b; }
+.recent-orders-empty { margin: 0; padding: 18px 0 22px; color: #60758b; font-size: 12px; line-height: 1.6; }
+@media(max-width: 400px) { .recent-orders { padding: 16px 16px 6px; } }

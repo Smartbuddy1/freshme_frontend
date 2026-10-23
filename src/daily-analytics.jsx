@@ -2,6 +2,8 @@ import {useId,useLayoutEffect,useRef,useState} from 'react';
 import {ChartColumnIncreasing,ShoppingCart} from 'lucide-react';
 import {money} from './api.js';
 import './daily-analytics.css';
+import {DonutChart} from './revenue-donut.jsx';
+import {RecentOrders} from './recent-orders.jsx';
 
 const dateLabel=date=>new Date(date+'T00:00:00Z').toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'UTC'});
 
@@ -63,17 +65,21 @@ function DailyChart({rows,metric,title}) {
   </section>;
 }
 
-export function DailyAnalytics({analytics,days,setDays,loading=false,error='',scope='shop',sideChart}) {
+export function DailyAnalytics({analytics,days,setDays,loading=false,error='',scope='shop',sideChart,recentOrders=[]}) {
   const ready=analytics&&(!analytics.days||analytics.days===Number(days));
+  const pie=sideChart??(scope==='shop'&&ready?<DonutChart key={days}
+    shops={analytics.daily.map(row=>({shopId:row.date,shopName:dateLabel(row.date),revenue:row.revenue}))}
+    title="Revenue by day" totalLabel="Selected period" unit="days" moreLabel="days"
+    emptyMessage="Paid orders will appear here for the selected period."/>:null);
   return <section className="daily-analytics" aria-label={scope==='platform'?'All client analytics':'Shop analytics'} aria-busy={loading||Boolean(analytics&&!ready)}>
     <div className="daily-analytics-toolbar"><h2>Sales overview</h2><label>Time period<select value={days} onChange={event=>setDays(event.target.value)}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select></label></div>
     {error&&!ready?<p role="status">Analytics could not be loaded. Refresh to try again.</p>:loading||analytics&&!ready?<p role="status">Loading analytics…</p>:ready?<>
-      <div className={sideChart?'analytics-grid':undefined}>
+      <div className={pie?'analytics-grid daily-analytics-layout':undefined}>
         <div className="daily-chart-stack">
           <DailyChart key={`revenue-${days}`} rows={analytics.daily} metric="revenue" title="Daily revenue"/>
           <DailyChart key={`orders-${days}`} rows={analytics.daily} metric="orders" title="Daily orders"/>
         </div>
-        {sideChart}
+        {pie&&<div className="daily-analytics-sidebar">{pie}<RecentOrders orders={recentOrders} showShop={scope==='platform'}/></div>}
       </div>
       <div className="daily-period-summary"><span><b>{money(analytics.totals.revenue)}</b> collected · <b>{analytics.totals.orders.toLocaleString('en-IN')}</b> paid orders</span><span>{dateLabel(analytics.from)} – {dateLabel(analytics.to)} · IST</span></div>
       <details className="daily-analytics-data"><summary>View exact daily totals</summary><div><table><caption>Daily totals · IST</caption><thead><tr><th>Date</th><th>Paid orders</th><th>Revenue</th></tr></thead><tbody>{analytics.daily.map(row=><tr key={row.date}><td>{dateLabel(row.date)}</td><td>{row.orders}</td><td>{money(row.revenue)}</td></tr>)}</tbody></table></div></details>

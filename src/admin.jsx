@@ -201,7 +201,7 @@ export function Login({ onLogin }) {
             />
           </label>
           <button className="primary full" disabled={busy}>
-            <span>{busy ? 'Logging inâ€¦' : 'Login'}</span>
+            <span>{busy ? 'Logging in…' : 'Login'}</span>
             <ArrowRight size={17} />
           </button>
         </form>
@@ -257,7 +257,7 @@ export default function Admin() {
     }
   }
 
-  if (user === undefined) return <div className="page-loading">Opening counter suiteâ€¦</div>;
+  if (user === undefined) return <div className="page-loading">Opening counter suite…</div>;
   if (!user && (location.pathname !== '/admin' || location.search)) return <Navigate to="/admin" replace/>;
   if (!user) return <><ErrorNotice message={error}/><Login onLogin={acceptUser} /></>;
   if(user.role==='SUPER_ADMIN'&&!selectedShop)return <Navigate to='/super-admin' replace/>;
@@ -317,7 +317,7 @@ export default function Admin() {
               <span>Managing <strong>{user.shop?.name}</strong></span>
             </div>
             <Link to="/super-admin/clients" className="return-bar-btn" aria-label="Back to Super Admin">
-              â† Back to Super Admin
+              ← Back to Super Admin
             </Link>
           </div>
         )}
@@ -396,7 +396,7 @@ function OrderTable({ orders, reload, notify, highlighted = new Set() }) {
                 <tr key={o._id} className={highlighted.has(o._id) ? 'new-order' : ''}>
                   <td className="token-cell">
                     <span className="token-capsule">
-                      <span className="token-number">{o.tokenNo ? `#${String(o.tokenNo).padStart(3, '0')}` : 'â€”'}</span>
+                      <span className="token-number">{o.tokenNo ? `#${String(o.tokenNo).padStart(3, '0')}` : '—'}</span>
                       {(o.orderCode || (o.tokenNo && `ORD-${100 + o.tokenNo}`)) && (
                         <span className="token-code">{o.orderCode || `ORD-${100 + o.tokenNo}`}</span>
                       )}
@@ -407,13 +407,13 @@ function OrderTable({ orders, reload, notify, highlighted = new Set() }) {
                       {(o.customerName || o.phone) && (
                         <div className="customer-tag">
                           {o.customerName && <strong className="customer-name">{o.customerName}</strong>}
-                          {o.phone && <span className="customer-phone">ðŸ“± {o.phone}</span>}
+                          {o.phone && <span className="customer-phone">📱 {o.phone}</span>}
                         </div>
                       )}
                       <div className="order-items-list">
                         {o.items.map((i, j) => (
                           <div key={j} className="order-item-line">
-                            <span className="item-qty">{i.qty}Ã—</span>
+                            <span className="item-qty">{i.qty}×</span>
                             <span className="item-name">{i.name}</span>
                             <span className="item-size">({i.size})</span>
                           </div>
@@ -497,7 +497,7 @@ function CustomerQRModal({ shopSlug, shopName, close }) {
   }
 
   return (
-    <Modal title={`Customer Ordering QR Â· ${shopName || 'Counter'}`} close={close}>
+    <Modal title={`Customer Ordering QR · ${shopName || 'Counter'}`} close={close}>
       <div className="shop-qr-modal-body">
         <p className="shop-qr-instructions">
           Display this QR code at your shop counter. Customers scan it with any smartphone camera to open your live menu and place orders.
@@ -579,7 +579,7 @@ function Dashboard({ notify, user }) {
         <div>
           <p className="platform-eyebrow">STORE OVERVIEW</p>
           <h1>A fresh start.</h1>
-          <p className="platform-detail">Hereâ€™s whatâ€™s happening at your counter today in Indian Standard Time.</p>
+          <p className="platform-detail">Here’s what’s happening at your counter today in Indian Standard Time.</p>
         </div>
         <span className="admin-date">{currentDateFormatted}</span>
       </div>
@@ -593,7 +593,7 @@ function Dashboard({ notify, user }) {
           <div className="stats-grid">
             <div className="stat-card stat-orders">
               <div className="stat-header">
-                <span className="stat-label">Todayâ€™s orders</span>
+                <span className="stat-label">Today’s orders</span>
                 <div className="stat-icon-box">
                   <ShoppingBag size={18} />
                 </div>
@@ -604,13 +604,13 @@ function Dashboard({ notify, user }) {
 
             <div className="stat-card stat-revenue">
               <div className="stat-header">
-                <span className="stat-label">Todayâ€™s revenue</span>
+                <span className="stat-label">Today’s revenue</span>
                 <div className="stat-icon-box">
                   <CircleDollarSign size={18} />
                 </div>
               </div>
               <strong className="stat-value">{money(data.revenue)}</strong>
-              <small className="stat-note">Gross collected Â· IST</small>
+              <small className="stat-note">Gross collected · IST</small>
             </div>
 
             <div className="stat-card stat-pending">
@@ -642,13 +642,13 @@ function Dashboard({ notify, user }) {
                 <canvas ref={miniCanvasRef} className="stat-mini-qr" width={44} height={44} />
                 <div>
                   <strong className="stat-qr-headline">Scan to order</strong>
-                  <small className="stat-note stat-qr-link-hint">View & print QR â†’</small>
+                  <small className="stat-note stat-qr-link-hint">View & print QR →</small>
                 </div>
               </div>
             </div>
           </div>
 
-          <DailyAnalytics analytics={data.analytics} days={days} setDays={setDays} error={error}/>
+          <DailyAnalytics analytics={data.analytics} days={days} setDays={setDays} error={error} recentOrders={data.orders}/>
 
           <div className="printer-panel">
             <div className="printer-info">
@@ -670,7 +670,7 @@ function Dashboard({ notify, user }) {
             <div className="printer-actions">
               <button className="btn-test-print" disabled={testBusy} onClick={testPrint}>
                 <Printer size={15} />
-                <span>{testBusy ? 'Sendingâ€¦' : 'Test print'}</span>
+                <span>{testBusy ? 'Sending…' : 'Test print'}</span>
               </button>
             </div>
           </div>
@@ -679,7 +679,7 @@ function Dashboard({ notify, user }) {
             <div className="panel-heading">
               <div>
                 <h2>Fresh off the menu</h2>
-                <p>Your 10 latest orders Â· updates automatically</p>
+                <p>Your 10 latest orders · updates automatically</p>
               </div>
               <Link to={adminPath('/admin/orders')} className="panel-link">
                 <span>All orders</span>
@@ -1125,7 +1125,7 @@ function ProductEditor({ product, close, saved }) {
           </div>
         </label>
         <div className="sizes-section">
-          <label className="field-title">Sizes & Prices (â‚¹)</label>
+          <label className="field-title">Sizes & Prices (₹)</label>
           {form.sizes.map((s, index) => (
             <div className="size-edit" key={index}>
               <label>
@@ -1146,7 +1146,7 @@ function ProductEditor({ product, close, saved }) {
                 />
               </label>
               <label>
-                <span>Price (â‚¹)</span>
+                <span>Price (₹)</span>
                 <input
                   required
                   type="number"
@@ -1198,7 +1198,7 @@ function ProductEditor({ product, close, saved }) {
         </div>
         <label>
           <span className="field-title">
-            Product Image <small>(optional Â· JPG, PNG or WebP)</small>
+            Product Image <small>(optional · JPG, PNG or WebP)</small>
           </span>
           <input
             className="upload-input"
@@ -1208,7 +1208,7 @@ function ProductEditor({ product, close, saved }) {
             onChange={upload}
           />
         </label>
-        {uploading && <p className="form-note">Uploading imageâ€¦</p>}
+        {uploading && <p className="form-note">Uploading image…</p>}
         {form.imageUrl && (
           <div className="preview-wrap">
             <img className="product-preview" src={formatImageUrl(form.imageUrl)} alt="Product preview" />
@@ -1219,7 +1219,7 @@ function ProductEditor({ product, close, saved }) {
         )}
         <Toggle checked={form.available} onChange={v => field('available', v)} label="Available to order" />
         <button className="primary full" disabled={busy || uploading}>
-          <span>{busy ? 'Saving changesâ€¦' : 'Save Flavor'}</span>
+          <span>{busy ? 'Saving changes…' : 'Save Flavor'}</span>
           <Check size={18} />
         </button>
       </form>
@@ -1475,7 +1475,7 @@ function ShopSettings({ notify, onPasswordChange, user }) {
                   <ShopIdentity id={shopSlug} />
                 </div>
                 <small style={{ color: '#64748b', marginTop: '6px', display: 'block' }}>
-                  This is your shopâ€™s unique identifier for customer orders and printer pairing.
+                  This is your shop’s unique identifier for customer orders and printer pairing.
                 </small>
               </label>
             </div>

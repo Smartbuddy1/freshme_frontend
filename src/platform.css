@@ -767,8 +767,8 @@
 
 /* Full-width client rows with a compact mobile layout. */
 .client-grid{grid-template-columns:minmax(0,1fr);gap:16px}
-.client-card{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(190px,.85fr) minmax(240px,1fr);gap:28px;align-items:center;padding:24px}
-.client-summary,.client-status{min-width:0}
+.client-card{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(240px,1fr);gap:28px;align-items:center;padding:24px}
+.client-summary{min-width:0}
 .client-card-top{justify-content:flex-start;gap:12px}
 .client-card h2{margin:14px 0 6px}
 .client-card .shop-identity{gap:6px}
@@ -776,18 +776,9 @@
 .client-card .shop-identity code{padding:0;background:none;font-family:inherit;font-size:12px}
 .client-card .shop-identity button{padding:4px 7px;font-size:11px}
 .client-admin-emails{border:0;padding:0}
-.client-status{border-inline:1px solid #edf0f5;padding-inline:24px}
-.client-status dl{margin:0 0 12px}
-.client-status .printer-connection{display:grid;justify-items:start;gap:6px}
 .client-actions{margin:0;gap:8px}
 .client-actions>*{font-size:12px!important;min-height:42px!important}
-.client-actions>.primary{grid-column:auto}
-.client-more{position:relative;margin-left:auto;flex:none}
-.client-more summary{display:grid;place-items:center;width:38px;height:38px;list-style:none;cursor:pointer;border:1px solid #d5dce7;border-radius:9px;background:white;color:#233550}
-.client-more summary::-webkit-details-marker{display:none}
-.client-more-options{position:absolute;top:44px;right:0;z-index:15;width:190px;padding:6px;border:1px solid #d5dce7;border-radius:12px;background:white;box-shadow:0 10px 30px #10213922;display:grid;gap:3px}
-.client-more-options a,.platform-shell .client-more-options button{display:flex;align-items:center;justify-content:flex-start;gap:8px;min-height:42px;padding:10px 12px;border:0;border-radius:7px;color:#233550;text-decoration:none;font-size:13px;font-weight:500;text-align:left;width:100%}
-.client-more-options a:hover,.platform-shell .client-more-options button:hover{background:#f5f7fb}
+.client-actions>.primary,.client-card .client-actions>.edit-client-btn{grid-column:auto}
 .client-card .client-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 .platform-panel{min-width:0}
 .platform-table{max-width:100%;overflow:auto}
@@ -1016,16 +1007,12 @@
 @media (min-width: 769px) and (max-width: 1150px) {
   .platform-main { padding: 28px 24px 40px; }
   .client-card { grid-template-columns: 1fr 1fr; gap: 20px; }
-  .client-status { border-right: 0; }
-  .client-actions { grid-column: 1/-1; grid-template-columns: repeat(3,minmax(0,1fr)); }
   .analytics-grid { grid-template-columns: 1fr; }
   .donut-body { flex-direction: row; align-items: center; }
   .donut-wrap { width: 160px; }
 }
 @media (max-width: 768px) {
   .client-card { grid-template-columns: minmax(0,1fr); gap: 18px; padding: 20px; }
-  .client-status { border: 0; border-top: 1px solid #edf0f5; padding: 16px 0 0; }
-  .client-status .printer-connection { display: flex; }
   .client-card h2 { font-size: 21px; }
   .analytics-grid, .analytics-tables { grid-template-columns: minmax(0,1fr); }
   .analytics-heading { flex-direction: column; gap: 14px; }
@@ -1040,5 +1027,49 @@
 /* Keyboard and touch access to chart values. */
 .ac-label { margin: 0; }
 .chart-day { width: 100%; accent-color: #d91b65; min-height: 24px; }
+
+/* Client management: quiet blue accents and aligned, compact action rows. */
+.platform-clients { --berry: #234c75; }
+.platform-clients .platform-eyebrow { color: #526b85 !important; }
+.platform-clients .platform-sidebar nav a.active,
+.platform-clients .mobile-admin-drawer nav a.active { background: #eaf1f8; color: #234c75; }
+.platform-clients .primary,
+.platform-clients .client-card a.primary { background: #234c75; border: 1px solid #234c75; box-shadow: none; }
+.platform-clients .primary:hover:not(:disabled),
+.platform-clients .client-card a.primary:hover { background: #193b5e; border-color: #193b5e; box-shadow: none; }
+.platform-clients :focus-visible { outline-color: #729bc5; }
+.platform-clients .platform-title { align-items: center; }
+.platform-clients .platform-title-actions > .primary { min-height: 44px; }
+.platform-clients .client-card {
+  grid-template-columns: minmax(0,1fr) minmax(300px,400px);
+  gap: 32px;
+  min-height: 190px;
+  padding: 24px;
+  align-items: center;
+}
+.platform-clients .client-summary { display: flex; align-items: flex-start; gap: 16px; }
+.platform-clients .client-icon { flex: 0 0 44px; height: 44px; padding: 10px; border-radius: 12px; background: #edf3f9; color: #345b80; }
+.platform-clients .client-information { min-width: 0; flex: 1; }
+.platform-clients .client-card-top { flex-wrap: wrap; gap: 8px 12px; min-height: 28px; }
+.platform-clients .client-card h2 { margin: 0; font: 700 19px/1.4 'DM Sans',sans-serif; letter-spacing: -.3px; }
+.platform-clients .platform-pill { flex-shrink: 0; padding: 4px 10px; font-size: 10px; }
+.platform-clients .shop-identity { margin: 8px 0 10px; gap: 8px; }
+.platform-clients .shop-identity a { color: #3c5873; }
+.platform-clients .client-admin-emails { gap: 4px; line-height: 1.5; }
+.platform-clients .client-admin-emails small { font-size: 12px; }
+.platform-clients .client-actions { align-items: stretch; gap: 8px; }
+.platform-clients .client-actions > * { height: 42px; padding: 8px 12px; border-radius: 9px; line-height: 1.25; box-shadow: none; margin: 0; }
+.platform-clients .client-actions > button { background: #fff; border-color: #dbe3ec; color: #304b66 !important; font-weight: 500; }
+.platform-clients .client-actions > button:hover:not(:disabled) { background: #f2f6fa; border-color: #aebfd0; }
+@media (min-width: 769px) and (max-width: 1150px) {
+  .platform-clients .client-card { grid-template-columns: minmax(0,1fr) minmax(240px,300px); gap: 20px; padding: 20px; }
+}
+@media (max-width: 768px) {
+  .platform-clients .platform-title { align-items: stretch; }
+  .platform-clients .client-card { grid-template-columns: minmax(0,1fr); gap: 18px; min-height: 0; padding: 18px; }
+  .platform-clients .client-summary { gap: 12px; }
+  .platform-clients .client-card h2 { font-size: 18px; }
+  .platform-clients .client-actions { padding-top: 16px; border-top: 1px solid #eaf0f5; }
+}
 .donut-legend button { display: grid; grid-template-columns: 9px minmax(0,1fr) auto; align-items: center; gap: 8px; width: 100%; min-width: 0; padding: 4px; border: 0; background: transparent; text-align: left; font: inherit; }
 .donut-legend li { display: block; }
