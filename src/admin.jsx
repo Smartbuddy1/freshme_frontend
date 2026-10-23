@@ -202,14 +202,11 @@ export function Login({ onLogin }) {
             />
           </label>
           <button className="primary full" disabled={busy}>
-            <span>{busy ? 'Signing in…' : 'Let’s get pouring'}</span>
+            <span>{busy ? 'Logging in…' : 'Login'}</span>
             <ArrowRight size={17} />
           </button>
         </form>
       </div>
-      <Link className="login-back" to="/">
-        Back to the slush menu
-      </Link>
     </div>
   );
 }
