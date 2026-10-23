@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, ShoppingBag, ReceiptText, TrendingUp, Calendar, RefreshCw } from 'lucide-react';
+import { CircleDollarSign, ShoppingBag, ReceiptText } from 'lucide-react';
 import { api, money, today, dateTime } from './api.js';
 import { ErrorNotice, Modal } from './components.jsx';
 import {ShopIdentity,PrinterConnection} from './shop-connection.jsx';

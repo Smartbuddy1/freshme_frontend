@@ -11,7 +11,7 @@ export function RecentOrders({orders=[],showShop=false}) {
   return <section className="recent-orders" aria-labelledby={id}>
     <header className="recent-orders-heading"><div><h3 id={id}>Recent orders</h3><p>Latest 5 orders · IST</p></div><ReceiptText size={20} aria-hidden="true"/></header>
     {recent.length?<ol className="recent-orders-list">{recent.map(order=><li key={order._id}>
-      <div className="recent-order-top"><strong>{order.orderCode||(order.tokenNo?`Token #${order.tokenNo}`:'Order')}</strong><b>{money(order.total)}</b></div>
+      <div className="recent-order-top"><strong>{order.orderCode||(order.tokenNo?`Token #${order.tokenNo}`:'Order')}{order.customerName?` · ${order.customerName}`:''}</strong><b>{money(order.total)}</b></div>
       {showShop&&<span className="recent-order-shop">{order.shopName||'Shop'}</span>}
       <div className="recent-order-bottom"><span className={`recent-order-status recent-order-status--${order.status?.toLowerCase()}`}>
         {labels[order.status]||order.status}{order.refunded?' · Refund flagged':''}

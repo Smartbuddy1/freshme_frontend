@@ -1,7 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validPhone, checkoutPayload, cartTotal, changeSize, orderPath,menuPath,shopStorageKey,shopRequestPath } from '../src/flow.js';
+import { validPhone, restoreCart, restoreText, checkoutPayload, cartTotal, changeSize, orderPath,menuPath,shopStorageKey,shopRequestPath } from '../src/flow.js';
 import {printerConnection} from '../src/printer-status.js';
+
+test('malformed saved carts and contact fields recover without blocking checkout',()=>{
+  const item={productId:'product',size:'Small',name:'Mango',color:'#ffaa00',price:30,qty:2};
+  for(const value of [null,{},'bad',42,[null], [{...item,qty:-1}],[{...item,price:'30'}]])assert.deepEqual(restoreCart(value),[]);
+  const cart=restoreCart([null,item,{...item,qty:21}]);
+  assert.deepEqual(cart,[item]);
+  assert.equal(cartTotal(cart),60);
+  assert.deepEqual(checkoutPayload(cart,restoreText({}),restoreText(42)).items,[{productId:'product',size:'Small',qty:2}]);
+  assert.equal(restoreText('Rahul'),'Rahul');
+});
 test('printer status distinguishes disconnected agent, stale heartbeat and offline hardware',()=>{
   const now=Date.parse('2026-10-18T10:00:00Z');
   const shop={enabled:true,agentLastSeenAt:new Date(now-1000).toISOString(),agentPrinterStatus:'online'};

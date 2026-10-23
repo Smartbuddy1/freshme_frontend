@@ -1,11 +1,8 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle,
   ArrowRight,
-  Calendar,
   Check,
-  ChevronDown,
   CircleDollarSign,
   Copy,
   ExternalLink,
@@ -24,42 +21,17 @@ import {
   Trash2,
   X,
   TrendingUp,
-  Clock,
   Sparkles,
   Store
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import {MobileNavigation} from './mobile-navigation.jsx';
-import heroCupsImg from './assets/hero-cups.jpg';
-import { api, money, today, dateTime, storageGet, storageSet, formatImageUrl, downloadPayments, setAdminShopId } from './api.js';
+import { api, money, today, dateTime, formatImageUrl, downloadPayments, setAdminShopId } from './api.js';
 import { Badge, Brand, Cup, ErrorNotice, Modal } from './components.jsx';
 import {ShopIdentity,PrinterConnection} from './shop-connection.jsx';
 import { menuPath } from './flow.js';
 import { Reports } from './admin-extras.jsx';
 import {DailyAnalytics} from './daily-analytics.jsx';
-
-export function Sparkline({ color = '#ec4899', id = '1' }) {
-  return (
-    <svg className="stat-sparkline" viewBox="0 0 100 36" fill="none" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id={`spark-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.0" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M0 26 Q 25 32, 50 18 T 100 8 L 100 36 L 0 36 Z"
-        fill={`url(#spark-${id})`}
-      />
-      <path
-        d="M0 26 Q 25 32, 50 18 T 100 8"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 function useData(path, interval = 0) {
   const [data, setData] = useState(null);
@@ -271,13 +243,6 @@ export default function Admin() {
     ['reports', 'Reports', TrendingUp],
     ['settings', 'Settings', SettingsIcon]
   ];
-
-  const userInitials = (user.email ? user.email.slice(0, 2) : 'AD').toUpperCase();
-  const formattedHeaderDate = new Date().toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
 
   return (
     <div className="admin-shell">

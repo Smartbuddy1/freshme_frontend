@@ -29,8 +29,8 @@ function ShopReport({rows=[]}){return <div className="platform-table"><table><th
 
 export default function SuperAdmin(){
   const {pathname}=useLocation();
-  const [user,setUser]=useState(),[error,setError]=useState(''),[revision,setRevision]=useState(0);
-  const {data:settings}=usePlatform('/settings',revision);
+  const [user,setUser]=useState(),[error,setError]=useState('');
+  const {data:settings}=usePlatform('/settings');
   useEffect(()=>{setAdminShopId(null);let active=true;api('/admin/me').then(u=>{if(active)setUser(u);}).catch(()=>{if(active)setUser(null);});const expire=()=>setUser(null);window.addEventListener('admin-expired',expire);return()=>{active=false;window.removeEventListener('admin-expired',expire);};},[]);
   async function logout(){try{await api('/admin/logout',{method:'POST'});setUser(null);}catch(e){setError(e.message);}}
   if(user===undefined)return <div className="page-loading">Opening platform…</div>;

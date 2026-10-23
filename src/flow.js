@@ -1,4 +1,13 @@
 export const validPhone = value => /^[6-9]\d{9}$/.test(String(value).trim());
+// Stored browser data can outlive a release or be malformed. Only restore valid rows.
+export function restoreCart(value) {
+  if(!Array.isArray(value))return [];
+  return value.filter(item=>item&&typeof item.productId==='string'&&typeof item.size==='string'&&
+    typeof item.name==='string'&&typeof item.color==='string'&&
+    Number.isInteger(item.qty)&&item.qty>=1&&item.qty<=20&&
+    Number.isFinite(item.price)&&item.price>0);
+}
+export const restoreText=value=>typeof value==='string'?value:'';
 export function checkoutPayload(cart, phone = '', customerName = '', shopSlug) {
   return { phone: phone.trim(), customerName: customerName.trim(),
     ...(shopSlug && shopSlug !== 'fresh-me' ? {shopSlug} : {}),

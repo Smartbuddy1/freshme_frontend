@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, Printer, QrCode, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Clock3, CreditCard, Lock, Minus, Plus, QrCode, ShieldCheck, ShoppingBag, Snowflake, Sparkles, Ticket, Trash2, X } from 'lucide-react';
 import { api, money, dateTime, loadCheckout, storageGet as readStorage, storageSet as writeStorage, formatImageUrl } from './api.js';
 import { Brand, Cup, Header, ErrorNotice, Skeleton, Modal, Empty, unlockScroll } from './components.jsx';
 import logoImg from './assets/logo.png';
-import { validPhone,checkoutPayload,cartTotal,orderPath as makeOrderPath,menuPath as makeMenuPath,shopStorageKey,shopRequestPath,changeSize as resizedCart } from './flow.js';
+import { validPhone,restoreCart,restoreText,checkoutPayload,cartTotal,orderPath as makeOrderPath,menuPath as makeMenuPath,shopStorageKey,shopRequestPath,changeSize as resizedCart } from './flow.js';
 const descriptions = { 'Kala Khatta': 'Tangy. Bold. A true original.', 'Blue Raspberry': 'A little blue, a lot of wow.', 'Green Apple': 'Crisp, zingy & oh-so-cool.', Orange: 'Sunshine in every icy sip.', Cola: 'Your classic, with a cool twist.', Mango: 'The king of summer. On ice.' };
 
 function PaymentPortal({ order, busy, onConfirm, onFail, onCancel }) {
@@ -153,15 +153,14 @@ export function Menu() {
   const storageSet=(key,value,session)=>writeStorage(shopStorageKey(shopSlug,key),value,session);
   const orderPath=id=>makeOrderPath(id,shopSlug), menuPath=()=>makeMenuPath(shopSlug);
   const shopApi=path=>api(shopRequestPath(path,shopSlug));
-  const location=useLocation();
   const navigate = useNavigate(); const [menu, setMenu] = useState(null); const [error, setError] = useState(''); const [category, setCategory] = useState('All flavors');
-  const [cart, setCart] = useState(() => storageGet('freshme-cart', [], true)); const [open, setOpen] = useState(false); const [drop, setDrop] = useState(''); const [toast, setToast] = useState('');
+  const [cart, setCart] = useState(() => restoreCart(storageGet('freshme-cart', [], true))); const [open, setOpen] = useState(false); const [drop, setDrop] = useState(''); const [toast, setToast] = useState('');
   const [paymentState, setPaymentState] = useState(''); const [busy, setBusy] = useState(false); const busyRef = useRef(false);
   const [demoOrder, setDemoOrder] = useState(null);
   const [activeOrder, setActiveOrder] = useState(null);
-  const [customerName, setCustomerName] = useState(() => storageGet('freshme-name', ''));
+  const [customerName, setCustomerName] = useState(() => restoreText(storageGet('freshme-name', '')));
   useEffect(() => { storageSet('freshme-name', customerName); }, [customerName]);
-  const [phone, setPhone] = useState(() => storageGet('freshme-phone', ''));
+  const [phone, setPhone] = useState(() => restoreText(storageGet('freshme-phone', '')));
   useEffect(() => { storageSet('freshme-phone', phone); }, [phone]);
   const checkout = useRef(storageGet('freshme-checkout', null, true));
   async function refresh() { try { const data = await shopApi('/menu'); setMenu(data); setError(''); } catch (e) { setError(e.message); } }
@@ -432,7 +431,7 @@ export function Token() {
   const {shopSlug}=useParams();
   const storageGet=(key,fallback,session)=>readStorage(shopStorageKey(shopSlug,key),fallback,session);
   const storageSet=(key,value,session)=>writeStorage(shopStorageKey(shopSlug,key),value,session);
-  const orderPath=id=>makeOrderPath(id,shopSlug), menuPath=()=>makeMenuPath(shopSlug);
+  const menuPath=()=>makeMenuPath(shopSlug);
   const shopApi=path=>api(shopRequestPath(path,shopSlug));
   const { id } = useParams(); const [order, setOrder] = useState(null); const [error, setError] = useState(''); const navigate = useNavigate();
   const location = useLocation();
